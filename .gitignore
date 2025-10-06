@@ -1,0 +1,35 @@
+# Entorno / caches
+venv/
+.env
+__pycache__/
+*.pyc
+*.log
+
+# Pesado / local
+*.onnx
+*.safetensors
+*.pth
+*.bin
+*.pt
+*.ckpt
+*.wav
+*.mp3
+*.flac
+
+# Datos locales
+audio/
+voice_out/
+piper/
+comfyui/
+openwebui/
+ollama/
+models/
+weights/
+outputs/
+runs/
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

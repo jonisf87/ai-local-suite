@@ -1,0 +1,8 @@
+gradio>=4.44
+faster-whisper>=1.2.0
+ctranslate2>=4.6.0
+requests>=2.32.0
+uvicorn>=0.30
+starlette>=0.38
+soundfile>=0.12
+pydub>=0.25
