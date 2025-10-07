@@ -19,7 +19,7 @@ Estructura recomendada de carpetas:
   - Open WebUI: 8080 (conecta a Ollama en 11434)
   - Ollama API: 11434 (systemd --user)
   - Voice UI: 7862 (script `voice_assistant_ui.py` o variantes live)
-  - Landing UI: 5000 (script `landing_ui.py`)
+  - Landing Manager UI: 5000 (script `landing_manager.py`)
 
   ## Estructura recomendada de carpetas
 
@@ -34,7 +34,7 @@ Estructura recomendada de carpetas:
   ├── transcribe_ui.py         (UI de transcripción Whisper)
   ├── voice_assistant_ui.py    (UI de asistente de voz)
   ├── voice_assistant_live*.py (variantes live del asistente de voz)
-  ├── landing_ui.py            (landing local para lanzar UIs)
+  ├── landing_manager.py       (gestor/landing para lanzar y controlar UIs)
   └── (otros scripts .py)
   ```
 
@@ -251,15 +251,22 @@ Estructura recomendada de carpetas:
   4. Respuesta de texto → TTS Piper → WAV en `~/ai/voice_out`.
   5. La UI reproduce el WAV.
 
-  ## 7) Landing UI (puerto 5000) — lanzador y guía
+  ## 7) Landing Manager UI (puerto 5000) — gestor y lanzador
 
-  Objetivo: ofrecer una portada con botones para abrir las UIs (ComfyUI, Open WebUI, Voice UI, Transcribe UI) y mostrar estado/health.
+  `landing_manager.py` ofrece:
+
+  - Auto‑arranque (autostart) de servicios si están caídos: Ollama (servicio), Open WebUI (Docker), ComfyUI y Voice UI.
+  - Panel con estado (UP/DOWN) por puerto y botones Start / Stop / Restart (cuando aplica).
+  - Apertura directa de cada interfaz en nuevas pestañas.
+  - Comandos de referencia incrustados.
+
+  Objetivo: centralizar en una sola página la gestión local de la suite sin recordar cada comando.
 
   Ejecutar:
 
   ```bash
   source ~/ai/venv/bin/activate
-  python /home/jonathan/ai/landing_ui.py
+  python /home/jonathan/ai/landing_manager.py
   # Abrir: http://localhost:5000
   ```
 
