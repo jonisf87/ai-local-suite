@@ -56,6 +56,7 @@ VOICE_SCRIPT = AI_DIR / "voice_assistant_ui.py"
 VOICE_CMD = f"{AI_DIR}/venv/bin/python {VOICE_SCRIPT}"
 VOICE_PORT = 7862
 WAN_WRAPPER_DIR = COMFY_DIR / "custom_nodes" / "ComfyUI-WanVideoWrapper"
+OLLAMA_MODELFILES_DIR = AI_DIR / "modelfiles"
 
 WAN_REQUIRED_NODES = [
     "WanVideoModelLoader",
@@ -487,6 +488,13 @@ ul{margin:0;padding-left:18px}
 
 <div class="section">
     <div class="section-title">Crear modelo custom (modelfile)</div>
+    <label>Preset de system prompt</label>
+    <select id="prompt_preset" onchange="applyPromptPreset()">
+        <option value="">Manual (sin preset)</option>
+        {% for p in prompt_presets %}
+        <option value="{{ p.id }}">{{ p.name }}{% if p.base_model %} (base: {{ p.base_model }}){% endif %}</option>
+        {% endfor %}
+    </select>
     <div class="row">
         <div>
             <label>Nombre del nuevo modelo</label>
@@ -506,11 +514,22 @@ ul{margin:0;padding-left:18px}
 
 </div>
 <script>
+const PROMPT_PRESETS={{prompt_presets_json}};
+
 function show(msg, ok=true){
     const r=document.getElementById('result');
     r.style.display='block';
     r.className='result '+(ok?'ok':'err');
     r.textContent=msg;
+}
+
+function applyPromptPreset(){
+    const id=document.getElementById('prompt_preset').value;
+    if(!id)return;
+    const preset=PROMPT_PRESETS.find(p=>p.id===id);
+    if(!preset)return;
+    if(preset.base_model) document.getElementById('base_model').value=preset.base_model;
+    if(preset.system_prompt) document.getElementById('system_prompt').value=preset.system_prompt;
 }
 
 async function refreshModels(){
@@ -890,6 +909,52 @@ def ollama_create_custom_model(model_name: str, base_model: str, system_prompt: 
         return {"ok": True, "message": f"Modelo custom creado: {model_name}"}
     except Exception as exc:
         return {"ok": False, "message": f"Error creando modelo custom: {exc}"}
+
+
+def _parse_modelfile_preset(path: Path):
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+    base_model = ""
+    m_from = re.search(r"^\s*FROM\s+(.+?)\s*$", raw, flags=re.MULTILINE)
+    if m_from:
+        base_model = m_from.group(1).strip()
+
+    system_prompt = ""
+    m_system = re.search(r"SYSTEM\s+\"\"\"(.*?)\"\"\"", raw, flags=re.DOTALL)
+    if m_system:
+        system_prompt = m_system.group(1).strip()
+
+    if not system_prompt:
+        return None
+
+    return {
+        "id": path.name,
+        "name": path.name.replace("-", " ").title(),
+        "base_model": base_model,
+        "system_prompt": system_prompt,
+    }
+
+
+def load_ollama_prompt_presets():
+    # Evitamos cargar presets con contenido explícito no apto para uso general del panel.
+    allowed_files = [
+        "security-auditor",
+        "python-expert",
+        "devops-expert",
+        "voice-assistant",
+    ]
+    presets = []
+    for fname in allowed_files:
+        p = OLLAMA_MODELFILES_DIR / fname
+        if not p.exists() or not p.is_file():
+            continue
+        parsed = _parse_modelfile_preset(p)
+        if parsed:
+            presets.append(parsed)
+    return presets
 
 
 # --- WORKFLOWS ----------------------------------------------------------------
@@ -1361,7 +1426,12 @@ def wan_video_export():
 
 @app.route("/tools/ollama-models", methods=["GET"])
 def ollama_models_tool():
-    return render_template_string(OLLAMA_MODELS_HTML)
+    presets = load_ollama_prompt_presets()
+    return render_template_string(
+        OLLAMA_MODELS_HTML,
+        prompt_presets=presets,
+        prompt_presets_json=json.dumps(presets, ensure_ascii=False),
+    )
 
 
 @app.route("/tools/ollama-models/list", methods=["GET"])
