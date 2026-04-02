@@ -46,7 +46,9 @@ COMFY_DIR = AI_DIR / "ComfyUI"
 COMFY_CMD = f"cd {COMFY_DIR} && {AI_DIR}/venv/bin/python main.py"
 COMFY_PORT = 8188
 WORKFLOWS_DIR = COMFY_DIR / "workflows"
-USE_EXTERNAL_WORKFLOW_FILES = os.environ.get("LANDING_USE_EXTERNAL_WORKFLOWS", "0") == "1"
+USE_EXTERNAL_WORKFLOW_FILES = (
+    os.environ.get("LANDING_USE_EXTERNAL_WORKFLOWS", "0") == "1"
+)
 
 OW_CONTAINER = "open-webui"
 OW_IMAGE = "ghcr.io/open-webui/open-webui:latest"
@@ -71,46 +73,89 @@ WAN_REQUIRED_NODES = [
 ]
 
 SERVICES = [
-    {"key": "comfy",     "label": "ComfyUI",    "port": COMFY_PORT},
+    {"key": "comfy", "label": "ComfyUI", "port": COMFY_PORT},
     {"key": "openwebui", "label": "Open WebUI", "port": OW_PORT},
-    {"key": "ollama",    "label": "Ollama",      "port": OLLAMA_PORT},
-    {"key": "voice",     "label": "Voice UI",    "port": VOICE_PORT},
+    {"key": "ollama", "label": "Ollama", "port": OLLAMA_PORT},
+    {"key": "voice", "label": "Voice UI", "port": VOICE_PORT},
 ]
 
 # --- PRESETS AnimateDiff SDXL -------------------------------------------------
 VIDEO_MODEL_PRESETS = [
-    {"id": "wai_nsfw",      "name": "WAI NSFW SDXL",        "checkpoint": "wai-nsfw-illustrious-sdxl.safetensors", "include_token": "wai_nsfw"},
-    {"id": "realvis",       "name": "RealVisXL",             "checkpoint": "RealVisXL_V5.0.safetensors",            "include_token": "realvis"},
-    {"id": "cyberrealistic","name": "CyberRealistic SDXL",   "checkpoint": "cyberrealisticXL.safetensors",          "include_token": "cyberrealistic"},
-    {"id": "juggernaut",    "name": "Juggernaut XL",         "checkpoint": "juggernautXL.safetensors",              "include_token": "juggernaut"},
-    {"id": "dreamshaper_xl","name": "DreamShaper XL",        "checkpoint": "dreamshaperXL.safetensors",             "include_token": "dreamshaper"},
+    {
+        "id": "wai_nsfw",
+        "name": "WAI NSFW SDXL",
+        "checkpoint": "wai-nsfw-illustrious-sdxl.safetensors",
+        "include_token": "wai_nsfw",
+    },
+    {
+        "id": "realvis",
+        "name": "RealVisXL",
+        "checkpoint": "RealVisXL_V5.0.safetensors",
+        "include_token": "realvis",
+    },
+    {
+        "id": "cyberrealistic",
+        "name": "CyberRealistic SDXL",
+        "checkpoint": "cyberrealisticXL.safetensors",
+        "include_token": "cyberrealistic",
+    },
+    {
+        "id": "juggernaut",
+        "name": "Juggernaut XL",
+        "checkpoint": "juggernautXL.safetensors",
+        "include_token": "juggernaut",
+    },
+    {
+        "id": "dreamshaper_xl",
+        "name": "DreamShaper XL",
+        "checkpoint": "dreamshaperXL.safetensors",
+        "include_token": "dreamshaper",
+    },
 ]
 
 VIDEO_SMOOTH_PROFILES = [
     {
-        "id": "cinematic_stable", "name": "Cinemático Estable",
-        "desc": "640x960, 24 frames, 8 fps", "width": 640, "height": 960,
-        "frames": 24, "fps": 8, "steps": 20, "cfg": 7.0, "denoise": 1.0,
-        "crf": 18, "pix_fmt": "yuv420p",
+        "id": "cinematic_stable",
+        "name": "Cinemático Estable",
+        "desc": "640x960, 24 frames, 8 fps",
+        "width": 640,
+        "height": 960,
+        "frames": 24,
+        "fps": 8,
+        "steps": 20,
+        "cfg": 7.0,
+        "denoise": 1.0,
+        "crf": 18,
+        "pix_fmt": "yuv420p",
     },
     {
-        "id": "fluid_dynamic", "name": "Fluido Dinámico",
-        "desc": "640x960, 20 frames, 10 fps", "width": 640, "height": 960,
-        "frames": 20, "fps": 10, "steps": 20, "cfg": 7.0, "denoise": 1.0,
-        "crf": 18, "pix_fmt": "yuv420p",
+        "id": "fluid_dynamic",
+        "name": "Fluido Dinámico",
+        "desc": "640x960, 20 frames, 10 fps",
+        "width": 640,
+        "height": 960,
+        "frames": 20,
+        "fps": 10,
+        "steps": 20,
+        "cfg": 7.0,
+        "denoise": 1.0,
+        "crf": 18,
+        "pix_fmt": "yuv420p",
     },
 ]
 
 # --- PRESETS WAN2.1 -----------------------------------------------------------
 WAN_MODEL_PRESETS = [
     {
-        "id": "wan_1b", "name": "Wan2.1 T2V 1.3B (rápido)",
+        "id": "wan_1b",
+        "name": "Wan2.1 T2V 1.3B (rápido)",
         "model": "Fun/Lumen/Wan2_1_Lumen-T2V-1.3B-V1.0_bf16.safetensors",
         "text_encoder": "umt5-xxl-enc-bf16.safetensors",
         "vae": "Wan2_1_VAE_bf16.safetensors",
     },
     {
-        "id": "wan_14b", "name": "Wan2.1 T2V 14B (calidad)",
+        "id": "wan_14b",
+        "name": "Wan2.1 T2V 14B (calidad)",
         "model": "Wan2_1-T2V-14B_fp8_e4m3fn.safetensors",
         "text_encoder": "umt5-xxl-enc-bf16.safetensors",
         "vae": "Wan2_1_VAE_bf16.safetensors",
@@ -119,22 +164,46 @@ WAN_MODEL_PRESETS = [
 
 WAN_VIDEO_PROFILES = [
     {
-        "id": "portrait_fast", "name": "Portrait Fast (480x832)",
-        "desc": "Formato vertical, rápido", "width": 480, "height": 832,
-        "frames": 20, "fps": 8, "steps": 20, "cfg": 6.0, "shift": 5.0,
-        "crf": 18, "pix_fmt": "yuv420p",
+        "id": "portrait_fast",
+        "name": "Portrait Fast (480x832)",
+        "desc": "Formato vertical, rápido",
+        "width": 480,
+        "height": 832,
+        "frames": 20,
+        "fps": 8,
+        "steps": 20,
+        "cfg": 6.0,
+        "shift": 5.0,
+        "crf": 18,
+        "pix_fmt": "yuv420p",
     },
     {
-        "id": "portrait_quality", "name": "Portrait Quality (480x832)",
-        "desc": "Formato vertical, más steps", "width": 480, "height": 832,
-        "frames": 24, "fps": 8, "steps": 30, "cfg": 6.0, "shift": 5.0,
-        "crf": 18, "pix_fmt": "yuv420p",
+        "id": "portrait_quality",
+        "name": "Portrait Quality (480x832)",
+        "desc": "Formato vertical, más steps",
+        "width": 480,
+        "height": 832,
+        "frames": 24,
+        "fps": 8,
+        "steps": 30,
+        "cfg": 6.0,
+        "shift": 5.0,
+        "crf": 18,
+        "pix_fmt": "yuv420p",
     },
     {
-        "id": "landscape_quality", "name": "Landscape Quality (832x480)",
-        "desc": "Formato apaisado, calidad alta", "width": 832, "height": 480,
-        "frames": 24, "fps": 8, "steps": 30, "cfg": 6.0, "shift": 5.0,
-        "crf": 18, "pix_fmt": "yuv420p",
+        "id": "landscape_quality",
+        "name": "Landscape Quality (832x480)",
+        "desc": "Formato apaisado, calidad alta",
+        "width": 832,
+        "height": 480,
+        "frames": 24,
+        "fps": 8,
+        "steps": 30,
+        "cfg": 6.0,
+        "shift": 5.0,
+        "crf": 18,
+        "pix_fmt": "yuv420p",
     },
 ]
 
@@ -145,24 +214,26 @@ HTML = """
 <meta charset="utf-8"><title>Centro de IA Local — Gestor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-:root{color-scheme:dark}
-body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:#0f1115;color:#e5ecf5;margin:0}
-.wrap{max-width:1060px;margin:48px auto;padding:0 20px}
-h1{font-size:28px;margin:0 0 10px}.sub{opacity:.82;margin-bottom:28px}
-.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-.card{background:#131826;border:1px solid #222a3c;border-radius:14px;padding:16px}
+:root{color-scheme:dark;--bg:#06070d;--panel:#0d1220;--panel2:#090d18;--line:#3efc9a;--line2:#38a8ff;--text:#d5ffe6;--warn:#ff4f81}
+body{font-family:"VT323","Press Start 2P","Lucida Console",monospace;background:radial-gradient(1200px 700px at 20% -10%,#152241 0%,#06070d 55%),radial-gradient(1000px 600px at 120% 120%,#101b32 0%,#06070d 60%);color:var(--text);margin:0;letter-spacing:.02em;position:relative}
+body:before{content:"";position:fixed;inset:0;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.03) 0 1px,transparent 1px 4px);pointer-events:none;mix-blend-mode:soft-light}
+.wrap{max-width:1100px;margin:44px auto;padding:0 18px}
+h1{font-size:30px;margin:0 0 12px;text-shadow:0 0 8px rgba(62,252,154,.45)}
+.sub{opacity:.9;margin-bottom:26px;color:#b5d8ff}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.card,.tool-card{background:linear-gradient(160deg,var(--panel) 0%,var(--panel2) 100%);border:2px solid #1f7eaf;border-radius:6px;padding:14px;box-shadow:0 0 0 1px rgba(62,252,154,.18) inset,0 0 18px rgba(56,168,255,.12)}
 .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.name{font-weight:600}.url{font-size:13px;opacity:.8}
-.status{font-size:12px;padding:4px 8px;border-radius:999px}
-.up{background:#13341f;color:#8ae6a2;border:1px solid #1f5e33}
-.down{background:#3a1e1e;color:#f2a6a6;border:1px solid #6b3030}
+.name{font-weight:700;color:#bfffe0;text-transform:uppercase}
+.url{font-size:13px;opacity:.92;color:#8bc7ff}
+.status{font-size:12px;padding:4px 8px;border-radius:4px;border:1px solid}
+.up{background:rgba(62,252,154,.14);color:#96ffcb;border-color:#3efc9a}
+.down{background:rgba(255,79,129,.14);color:#ff9fbe;border-color:#ff4f81}
 .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-a.btn{text-decoration:none;padding:10px 12px;border-radius:10px;background:#1a2132;border:1px solid #2a3144;color:#e5ecf5;font-size:14px;cursor:pointer}
-a.btn:hover{background:#202944}
-.help{margin-top:28px;font-size:14px;opacity:.9}
-code{background:#1a2132;padding:2px 6px;border-radius:6px;border:1px solid #2a3144}
-pre{background:#0b0f18;border:1px solid #222a3c;border-radius:10px;padding:14px;overflow:auto}
-.tool-card{background:#0e1420;border:1px solid #1a2a4a;border-radius:14px;padding:16px;margin-top:0}
+a.btn{text-decoration:none;padding:10px 12px;border-radius:4px;background:linear-gradient(180deg,#10233d 0%,#0d1a2d 100%);border:1px solid #2b9cff;color:#d8eeff;font-size:14px;cursor:pointer;box-shadow:0 0 0 1px rgba(62,252,154,.14) inset}
+a.btn:hover{background:linear-gradient(180deg,#15345f 0%,#10233d 100%);transform:translateY(-1px)}
+.help{margin-top:24px;font-size:14px;opacity:.95}
+code{background:#0f1c2f;padding:2px 6px;border-radius:4px;border:1px solid #2d7bc2;color:#b8f6d9}
+pre{background:#050a14;border:1px solid #246eab;border-radius:6px;padding:14px;overflow:auto;color:#bdf2ff}
 </style>
 <script>
 async function doAction(svc,action){
@@ -271,18 +342,21 @@ VIDEO_TOOL_HTML = """
 <meta charset="utf-8"><title>AnimateDiff SDXL — Generar Vídeo</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-:root{color-scheme:dark}body{font-family:ui-sans-serif,system-ui,Arial;background:#0f1115;color:#e5ecf5;margin:0}
-.wrap{max-width:780px;margin:40px auto;padding:0 20px}h1{font-size:24px;margin:0 0 6px}
-.back{font-size:13px;opacity:.7;margin-bottom:20px}.back a{color:#8ab4f8;text-decoration:none}
-label{display:block;font-size:13px;opacity:.8;margin:12px 0 3px}
-input,textarea,select{width:100%;box-sizing:border-box;background:#131826;border:1px solid #2a3144;border-radius:8px;color:#e5ecf5;padding:8px 10px;font-size:14px}
-textarea{height:90px;resize:vertical}.row{display:flex;gap:12px}.row>div{flex:1}
-button{margin-top:18px;background:#1e3a6e;border:1px solid #2a5098;color:#e5ecf5;padding:10px 22px;border-radius:10px;font-size:15px;cursor:pointer}
-button:hover{background:#264880}
-.result{margin-top:20px;background:#131826;border:1px solid #2a3144;border-radius:10px;padding:14px;font-size:14px;white-space:pre-wrap}
-.ok{color:#8ae6a2}.err{color:#f2a6a6}
-.section{background:#0e1420;border:1px solid #1a2a4a;border-radius:12px;padding:14px;margin-bottom:14px}
-.section-title{font-size:13px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+:root{color-scheme:dark}
+body{font-family:"VT323","Press Start 2P","Lucida Console",monospace;background:radial-gradient(900px 500px at 10% -10%,#1a2748 0%,#06070d 60%);color:#d5ffe6;margin:0}
+.wrap{max-width:800px;margin:36px auto;padding:0 18px}
+h1{font-size:28px;margin:0 0 8px;text-shadow:0 0 8px rgba(62,252,154,.35)}
+.back{font-size:14px;opacity:.9;margin-bottom:18px}.back a{color:#78c7ff;text-decoration:none}
+label{display:block;font-size:13px;opacity:.95;margin:10px 0 3px;color:#9fd0ff}
+input,textarea,select{width:100%;box-sizing:border-box;background:#081122;border:1px solid #2a8fd6;border-radius:4px;color:#d5ffe6;padding:9px 10px;font-size:16px;box-shadow:0 0 0 1px rgba(62,252,154,.12) inset}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#3efc9a;box-shadow:0 0 0 1px rgba(62,252,154,.4),0 0 12px rgba(62,252,154,.2)}
+textarea{height:96px;resize:vertical}.row{display:flex;gap:10px}.row>div{flex:1}
+button,a.btn{margin-top:8px;background:linear-gradient(180deg,#15345f 0%,#10233d 100%);border:1px solid #2ea8ff;color:#e5f4ff;padding:10px 18px;border-radius:4px;font-size:15px;cursor:pointer;text-decoration:none;display:inline-block}
+button:hover,a.btn:hover{background:linear-gradient(180deg,#1d4b88 0%,#15345f 100%)}
+.result{margin-top:16px;background:#091227;border:1px solid #2b87cf;border-radius:4px;padding:12px;font-size:15px;white-space:pre-wrap}
+.ok{color:#8effb8}.err{color:#ff9bbb}
+.section{background:linear-gradient(160deg,#0b1326 0%,#09101f 100%);border:2px solid #1f79b5;border-radius:6px;padding:12px;margin-bottom:12px}
+.section-title{font-size:13px;font-weight:700;opacity:.95;text-transform:uppercase;letter-spacing:.08em;color:#8ec9ff}
 </style></head><body><div class="wrap">
 <h1>🎬 AnimateDiff SDXL — Generar Vídeo</h1>
 <div class="back"><a href="/">← Volver al gestor</a></div>
@@ -373,19 +447,23 @@ WAN_TOOL_HTML = """
 <meta charset="utf-8"><title>Wan2.1 — Generar Vídeo</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-:root{color-scheme:dark}body{font-family:ui-sans-serif,system-ui,Arial;background:#0f1115;color:#e5ecf5;margin:0}
-.wrap{max-width:780px;margin:40px auto;padding:0 20px}h1{font-size:24px;margin:0 0 6px}
-.back{font-size:13px;opacity:.7;margin-bottom:20px}.back a{color:#8ab4f8;text-decoration:none}
-label{display:block;font-size:13px;opacity:.8;margin:12px 0 3px}
-input,textarea,select{width:100%;box-sizing:border-box;background:#131826;border:1px solid #2a3144;border-radius:8px;color:#e5ecf5;padding:8px 10px;font-size:14px}
-textarea{height:90px;resize:vertical}.row{display:flex;gap:12px}.row>div{flex:1}
-button{margin-top:6px;background:#1e3a6e;border:1px solid #2a5098;color:#e5ecf5;padding:10px 22px;border-radius:10px;font-size:15px;cursor:pointer}
-button:hover{background:#264880}button.sec{background:#1a2540;border-color:#2a3560;margin-left:10px}
-.result{margin-top:20px;background:#131826;border:1px solid #2a3144;border-radius:10px;padding:14px;font-size:14px;white-space:pre-wrap}
-.ok{color:#8ae6a2}.err{color:#f2a6a6}
-.section{background:#0e1420;border:1px solid #1a2a4a;border-radius:12px;padding:14px;margin-bottom:14px}
-.section-title{font-size:13px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.note{font-size:12px;opacity:.6;margin-top:4px}
+:root{color-scheme:dark}
+body{font-family:"VT323","Press Start 2P","Lucida Console",monospace;background:radial-gradient(950px 520px at 90% -20%,#1a2748 0%,#06070d 62%);color:#d5ffe6;margin:0}
+.wrap{max-width:800px;margin:36px auto;padding:0 18px}
+h1{font-size:28px;margin:0 0 8px;text-shadow:0 0 8px rgba(62,252,154,.35)}
+.back{font-size:14px;opacity:.9;margin-bottom:18px}.back a{color:#78c7ff;text-decoration:none}
+label{display:block;font-size:13px;opacity:.95;margin:10px 0 3px;color:#9fd0ff}
+input,textarea,select{width:100%;box-sizing:border-box;background:#081122;border:1px solid #2a8fd6;border-radius:4px;color:#d5ffe6;padding:9px 10px;font-size:16px;box-shadow:0 0 0 1px rgba(62,252,154,.12) inset}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#3efc9a;box-shadow:0 0 0 1px rgba(62,252,154,.4),0 0 12px rgba(62,252,154,.2)}
+textarea{height:96px;resize:vertical}.row{display:flex;gap:10px}.row>div{flex:1}
+button,a.btn{margin-top:6px;background:linear-gradient(180deg,#15345f 0%,#10233d 100%);border:1px solid #2ea8ff;color:#e5f4ff;padding:10px 18px;border-radius:4px;font-size:15px;cursor:pointer;text-decoration:none;display:inline-block}
+button:hover,a.btn:hover{background:linear-gradient(180deg,#1d4b88 0%,#15345f 100%)}
+button.sec{background:linear-gradient(180deg,#2a2056 0%,#20193f 100%);border-color:#7c6bff}
+.result{margin-top:16px;background:#091227;border:1px solid #2b87cf;border-radius:4px;padding:12px;font-size:15px;white-space:pre-wrap}
+.ok{color:#8effb8}.err{color:#ff9bbb}
+.section{background:linear-gradient(160deg,#0b1326 0%,#09101f 100%);border:2px solid #1f79b5;border-radius:6px;padding:12px;margin-bottom:12px}
+.section-title{font-size:13px;font-weight:700;opacity:.95;text-transform:uppercase;letter-spacing:.08em;color:#8ec9ff}
+.note{font-size:12px;opacity:.85;margin-top:4px;color:#95cfff}
 </style></head><body><div class="wrap">
 <h1>🎞️ Wan2.1 — Text to Video</h1>
 <div class="back"><a href="/">← Volver al gestor</a></div>
@@ -488,18 +566,21 @@ OLLAMA_MODELS_HTML = """
 <meta charset="utf-8"><title>Ollama Custom Models</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-:root{color-scheme:dark}body{font-family:ui-sans-serif,system-ui,Arial;background:#0f1115;color:#e5ecf5;margin:0}
-.wrap{max-width:900px;margin:40px auto;padding:0 20px}h1{font-size:24px;margin:0 0 6px}
-.back{font-size:13px;opacity:.7;margin-bottom:20px}.back a{color:#8ab4f8;text-decoration:none}
-.section{background:#0e1420;border:1px solid #1a2a4a;border-radius:12px;padding:14px;margin-bottom:14px}
-.section-title{font-size:13px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-label{display:block;font-size:13px;opacity:.8;margin:12px 0 3px}
-input,textarea{width:100%;box-sizing:border-box;background:#131826;border:1px solid #2a3144;border-radius:8px;color:#e5ecf5;padding:8px 10px;font-size:14px}
-textarea{height:140px;resize:vertical}.row{display:flex;gap:12px}.row>div{flex:1}
-button{margin-top:12px;background:#1e3a6e;border:1px solid #2a5098;color:#e5ecf5;padding:10px 22px;border-radius:10px;font-size:15px;cursor:pointer}
-button:hover{background:#264880}button.sec{background:#1a2540;border-color:#2a3560;margin-left:10px}
-.result{margin-top:16px;background:#131826;border:1px solid #2a3144;border-radius:10px;padding:14px;font-size:14px;white-space:pre-wrap}
-.ok{color:#8ae6a2}.err{color:#f2a6a6}
+:root{color-scheme:dark}
+body{font-family:"VT323","Press Start 2P","Lucida Console",monospace;background:radial-gradient(900px 500px at 50% -10%,#1a2748 0%,#06070d 60%);color:#d5ffe6;margin:0}
+.wrap{max-width:920px;margin:36px auto;padding:0 18px}
+h1{font-size:28px;margin:0 0 8px;text-shadow:0 0 8px rgba(62,252,154,.35)}
+.back{font-size:14px;opacity:.9;margin-bottom:18px}.back a{color:#78c7ff;text-decoration:none}
+.section{background:linear-gradient(160deg,#0b1326 0%,#09101f 100%);border:2px solid #1f79b5;border-radius:6px;padding:12px;margin-bottom:12px}
+.section-title{font-size:13px;font-weight:700;opacity:.95;text-transform:uppercase;letter-spacing:.08em;color:#8ec9ff;margin-bottom:8px}
+label{display:block;font-size:13px;opacity:.95;margin:10px 0 3px;color:#9fd0ff}
+input,textarea,select{width:100%;box-sizing:border-box;background:#081122;border:1px solid #2a8fd6;border-radius:4px;color:#d5ffe6;padding:9px 10px;font-size:16px;box-shadow:0 0 0 1px rgba(62,252,154,.12) inset}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#3efc9a;box-shadow:0 0 0 1px rgba(62,252,154,.4),0 0 12px rgba(62,252,154,.2)}
+textarea{height:140px;resize:vertical}.row{display:flex;gap:10px}.row>div{flex:1}
+button{margin-top:10px;background:linear-gradient(180deg,#15345f 0%,#10233d 100%);border:1px solid #2ea8ff;color:#e5f4ff;padding:10px 18px;border-radius:4px;font-size:15px;cursor:pointer}
+button:hover{background:linear-gradient(180deg,#1d4b88 0%,#15345f 100%)}
+.result{margin-top:14px;background:#091227;border:1px solid #2b87cf;border-radius:4px;padding:12px;font-size:15px;white-space:pre-wrap}
+.ok{color:#8effb8}.err{color:#ff9bbb}
 ul{margin:0;padding-left:18px}
 </style></head><body><div class="wrap">
 <h1>🧠 Ollama Custom Models</h1>
@@ -607,6 +688,7 @@ refreshModels();
 </body></html>
 """
 
+
 # --- UTILIDADES ---------------------------------------------------------------
 def port_open(port: int, host: str = "127.0.0.1", timeout: float = 0.25) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -621,12 +703,15 @@ def port_open(port: int, host: str = "127.0.0.1", timeout: float = 0.25) -> bool
 def check_all_status() -> dict:
     def _check(svc):
         return svc["key"], port_open(svc["port"])
+
     with ThreadPoolExecutor(max_workers=len(SERVICES)) as ex:
         return dict(ex.map(_check, SERVICES))
 
 
 def run_bg(cmd: str, pidfile: Path) -> int:
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
+    )
     pidfile.write_text(str(proc.pid))
     return proc.pid
 
@@ -652,7 +737,12 @@ def ensure_dir(p: Path):
 
 def have_docker() -> bool:
     try:
-        subprocess.run(["docker", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        subprocess.run(
+            ["docker", "--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
         return True
     except Exception:
         return False
@@ -772,25 +862,47 @@ def openwebui_start():
         return "nodocker"
     if port_open(OW_PORT):
         return "already"
-    r = subprocess.run(["docker", "start", OW_CONTAINER], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    r = subprocess.run(
+        ["docker", "start", OW_CONTAINER],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     if r.returncode == 0:
         return "started"
     cmd = [
-        "docker", "run", "-d", "--name", OW_CONTAINER,
-        "-p", f"{OW_PORT}:8080", "--network", "host",
-        "-e", f"OLLAMA_BASE_URL=http://127.0.0.1:{OLLAMA_PORT}",
-        "-v", "openwebui-data:/app/backend/data",
-        "--restart", "unless-stopped",
+        "docker",
+        "run",
+        "-d",
+        "--name",
+        OW_CONTAINER,
+        "-p",
+        f"{OW_PORT}:8080",
+        "--network",
+        "host",
+        "-e",
+        f"OLLAMA_BASE_URL=http://127.0.0.1:{OLLAMA_PORT}",
+        "-v",
+        "openwebui-data:/app/backend/data",
+        "--restart",
+        "unless-stopped",
         OW_IMAGE,
     ]
     r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return "run_ok" if r.returncode == 0 else f"run_fail:{r.stderr.decode(errors='ignore')}"
+    return (
+        "run_ok"
+        if r.returncode == 0
+        else f"run_fail:{r.stderr.decode(errors='ignore')}"
+    )
 
 
 def openwebui_stop():
     if not have_docker():
         return
-    subprocess.run(["docker", "stop", OW_CONTAINER], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(
+        ["docker", "stop", OW_CONTAINER],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 # --- AUTOINICIO ---------------------------------------------------------------
@@ -846,7 +958,9 @@ def comfy_api_get(path: str) -> dict:
 def comfy_api_post(path: str, payload: dict) -> dict:
     url = f"http://127.0.0.1:{COMFY_PORT}{path}"
     data = json.dumps(payload).encode()
-    req = urlrequest.Request(url, data=data, headers={"Content-Type": "application/json"})
+    req = urlrequest.Request(
+        url, data=data, headers={"Content-Type": "application/json"}
+    )
     with urlrequest.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read())
 
@@ -896,7 +1010,9 @@ def ollama_api_get(path: str) -> dict:
 def ollama_api_post(path: str, payload: dict, timeout: float = 600.0) -> dict:
     url = f"http://127.0.0.1:{OLLAMA_PORT}{path}"
     data = json.dumps(payload).encode()
-    req = urlrequest.Request(url, data=data, headers={"Content-Type": "application/json"})
+    req = urlrequest.Request(
+        url, data=data, headers={"Content-Type": "application/json"}
+    )
     with urlrequest.urlopen(req, timeout=timeout) as resp:
         body = resp.read().decode("utf-8", errors="ignore").strip()
     if not body:
@@ -934,7 +1050,9 @@ def ollama_pull_model(model_name: str):
     if not model_name:
         return {"ok": False, "message": "Falta el nombre del modelo."}
     try:
-        ollama_api_post("/api/pull", {"name": model_name, "stream": False}, timeout=1800.0)
+        ollama_api_post(
+            "/api/pull", {"name": model_name, "stream": False}, timeout=1800.0
+        )
         return {"ok": True, "message": f"Modelo descargado: {model_name}"}
     except Exception as exc:
         return {"ok": False, "message": f"Error en pull: {exc}"}
@@ -948,7 +1066,7 @@ def ollama_create_custom_model(model_name: str, base_model: str, system_prompt: 
     modelfile = f"FROM {base_model}\n"
     if system_prompt:
         escaped = system_prompt.replace('"""', '\\"\\"\\"')
-        modelfile += f"SYSTEM \"\"\"{escaped}\"\"\"\n"
+        modelfile += f'SYSTEM """{escaped}"""\n'
     try:
         ollama_api_post(
             "/api/create",
@@ -1007,10 +1125,27 @@ def load_ollama_prompt_presets():
 
 
 # --- WORKFLOWS ----------------------------------------------------------------
-def patch_api_workflow(workflow, positive, negative, checkpoint,
-                       width, height, frames, fps, steps, cfg, denoise,
-                       crf, pix_fmt, seed, output_prefix,
-                       wan_model=None, shift=5.0, text_encoder=None, vae=None):
+def patch_api_workflow(
+    workflow,
+    positive,
+    negative,
+    checkpoint,
+    width,
+    height,
+    frames,
+    fps,
+    steps,
+    cfg,
+    denoise,
+    crf,
+    pix_fmt,
+    seed,
+    output_prefix,
+    wan_model=None,
+    shift=5.0,
+    text_encoder=None,
+    vae=None,
+):
     wf = json.loads(json.dumps(workflow))
     ct_map = {}
     for nid, node in wf.items():
@@ -1037,25 +1172,40 @@ def patch_api_workflow(workflow, positive, negative, checkpoint,
             neg_nid = str(n_ref[0])
             if neg_nid in wf and wf[neg_nid].get("class_type") == "CLIPTextEncode":
                 wf[neg_nid]["inputs"]["text"] = negative
-        node["inputs"].update({"steps": steps, "cfg": cfg, "seed": seed, "denoise": denoise})
+        node["inputs"].update(
+            {"steps": steps, "cfg": cfg, "seed": seed, "denoise": denoise}
+        )
 
-    patch_node("EmptyLatentImage", {"width": width, "height": height, "batch_size": frames})
+    patch_node(
+        "EmptyLatentImage", {"width": width, "height": height, "batch_size": frames}
+    )
     for ct in ("ADE_AnimateDiffLoaderWithContext", "ADE_AnimateDiffLoaderGen1"):
         patch_node(ct, {"context_length": frames})
-    patch_node("VHS_VideoCombine", {
-        "frame_rate": fps, "crf": crf, "pix_fmt": pix_fmt,
-        "filename_prefix": output_prefix,
-    })
+    patch_node(
+        "VHS_VideoCombine",
+        {
+            "frame_rate": fps,
+            "crf": crf,
+            "pix_fmt": pix_fmt,
+            "filename_prefix": output_prefix,
+        },
+    )
 
     if wan_model:
         patch_node("WanVideoModelLoader", {"model": wan_model})
-    patch_node("WanVideoSampler", {"shift": shift, "steps": steps, "cfg": cfg, "seed": seed})
+    patch_node(
+        "WanVideoSampler", {"shift": shift, "steps": steps, "cfg": cfg, "seed": seed}
+    )
     if text_encoder:
         patch_node("LoadWanVideoT5TextEncoder", {"model_name": text_encoder})
     if vae:
         patch_node("WanVideoVAELoader", {"model_name": vae})
-    patch_node("WanVideoTextEncode", {"positive_prompt": positive, "negative_prompt": negative})
-    patch_node("WanVideoEmptyEmbeds", {"width": width, "height": height, "num_frames": frames})
+    patch_node(
+        "WanVideoTextEncode", {"positive_prompt": positive, "negative_prompt": negative}
+    )
+    patch_node(
+        "WanVideoEmptyEmbeds", {"width": width, "height": height, "num_frames": frames}
+    )
 
     return wf
 
@@ -1087,7 +1237,9 @@ def find_checkpoint(include_token):
 
 
 def resolve_checkpoint_name(obj_info: dict, preset: dict) -> str:
-    ckpt_options = get_node_input_options(obj_info, "CheckpointLoaderSimple", "ckpt_name")
+    ckpt_options = get_node_input_options(
+        obj_info, "CheckpointLoaderSimple", "ckpt_name"
+    )
     if not ckpt_options:
         return preset["checkpoint"]
 
@@ -1134,39 +1286,97 @@ def default_video_form():
         "smooth_profile": profile["id"],
         "positive_prompt": "",
         "negative_prompt": "worst quality, low quality, lowres, blurry, deformed, watermark",
-        "width": profile["width"], "height": profile["height"],
-        "frames": profile["frames"], "fps": profile["fps"],
-        "steps": profile["steps"], "cfg": profile["cfg"],
-        "denoise": profile["denoise"], "crf": profile["crf"],
-        "pix_fmt": profile["pix_fmt"], "seed": random.randint(0, 2**31),
+        "width": profile["width"],
+        "height": profile["height"],
+        "frames": profile["frames"],
+        "fps": profile["fps"],
+        "steps": profile["steps"],
+        "cfg": profile["cfg"],
+        "denoise": profile["denoise"],
+        "crf": profile["crf"],
+        "pix_fmt": profile["pix_fmt"],
+        "seed": random.randint(0, 2**31),
     }
 
 
-def build_video_prompt(checkpoint, motion_model, beta_schedule, positive, negative,
-                       width, height, frames, fps, steps, cfg, denoise,
-                       crf, pix_fmt, seed, output_prefix):
+def build_video_prompt(
+    checkpoint,
+    motion_model,
+    beta_schedule,
+    positive,
+    negative,
+    width,
+    height,
+    frames,
+    fps,
+    steps,
+    cfg,
+    denoise,
+    crf,
+    pix_fmt,
+    seed,
+    output_prefix,
+):
     return {
-        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": checkpoint}},
-        "2": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["1", 1]}},
-        "3": {"class_type": "CLIPTextEncode", "inputs": {"text": negative, "clip": ["1", 1]}},
-        "4": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": frames}},
-        "5": {"class_type": "ADE_AnimateDiffLoaderWithContext", "inputs": {
-            "model": ["1", 0],
-            "model_name": motion_model,
-            "beta_schedule": beta_schedule,
-        }},
-        "6": {"class_type": "KSampler", "inputs": {
-            "model": ["5", 0], "positive": ["2", 0], "negative": ["3", 0],
-            "latent_image": ["4", 0], "seed": seed, "steps": steps, "cfg": cfg,
-            "sampler_name": "euler", "scheduler": "karras", "denoise": denoise,
-        }},
-        "7": {"class_type": "VAEDecode", "inputs": {"samples": ["6", 0], "vae": ["1", 2]}},
-        "8": {"class_type": "VHS_VideoCombine", "inputs": {
-            "images": ["7", 0], "frame_rate": fps, "loop_count": 0,
-            "filename_prefix": output_prefix, "format": "video/h264-mp4",
-            "pix_fmt": pix_fmt, "crf": crf, "save_metadata": True,
-            "trim_to_audio": False, "pingpong": False, "save_output": True,
-        }},
+        "1": {
+            "class_type": "CheckpointLoaderSimple",
+            "inputs": {"ckpt_name": checkpoint},
+        },
+        "2": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {"text": positive, "clip": ["1", 1]},
+        },
+        "3": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {"text": negative, "clip": ["1", 1]},
+        },
+        "4": {
+            "class_type": "EmptyLatentImage",
+            "inputs": {"width": width, "height": height, "batch_size": frames},
+        },
+        "5": {
+            "class_type": "ADE_AnimateDiffLoaderWithContext",
+            "inputs": {
+                "model": ["1", 0],
+                "model_name": motion_model,
+                "beta_schedule": beta_schedule,
+            },
+        },
+        "6": {
+            "class_type": "KSampler",
+            "inputs": {
+                "model": ["5", 0],
+                "positive": ["2", 0],
+                "negative": ["3", 0],
+                "latent_image": ["4", 0],
+                "seed": seed,
+                "steps": steps,
+                "cfg": cfg,
+                "sampler_name": "euler",
+                "scheduler": "karras",
+                "denoise": denoise,
+            },
+        },
+        "7": {
+            "class_type": "VAEDecode",
+            "inputs": {"samples": ["6", 0], "vae": ["1", 2]},
+        },
+        "8": {
+            "class_type": "VHS_VideoCombine",
+            "inputs": {
+                "images": ["7", 0],
+                "frame_rate": fps,
+                "loop_count": 0,
+                "filename_prefix": output_prefix,
+                "format": "video/h264-mp4",
+                "pix_fmt": pix_fmt,
+                "crf": crf,
+                "save_metadata": True,
+                "trim_to_audio": False,
+                "pingpong": False,
+                "save_output": True,
+            },
+        },
     }
 
 
@@ -1220,9 +1430,21 @@ def submit_video_scene(form_data):
                 try:
                     api_wf = json.loads(p.read_text(encoding="utf-8"))
                     prompt = patch_api_workflow(
-                        api_wf, positive, negative, checkpoint,
-                        width, height, frames, fps, steps, cfg, denoise,
-                        crf, pix_fmt, seed, output_prefix,
+                        api_wf,
+                        positive,
+                        negative,
+                        checkpoint,
+                        width,
+                        height,
+                        frames,
+                        fps,
+                        steps,
+                        cfg,
+                        denoise,
+                        crf,
+                        pix_fmt,
+                        seed,
+                        output_prefix,
                     )
                     workflow_file = fname
                     break
@@ -1266,7 +1488,9 @@ def submit_video_scene(form_data):
                     errs = v.get("errors", [])
                     if errs:
                         first = errs[0]
-                        node_msgs.append(f"{cls}: {first.get('details') or first.get('message')}")
+                        node_msgs.append(
+                            f"{cls}: {first.get('details') or first.get('message')}"
+                        )
                 if node_msgs:
                     msg = " ; ".join(node_msgs[:3])
             full = f"HTTP {exc.code}: {msg}"
@@ -1316,56 +1540,127 @@ def default_wan_form():
         "video_profile": profile["id"],
         "positive_prompt": "",
         "negative_prompt": "worst quality, low quality, lowres, blurry, deformed, watermark",
-        "width": profile["width"], "height": profile["height"],
-        "frames": profile["frames"], "fps": profile["fps"],
-        "steps": profile["steps"], "cfg": profile["cfg"],
-        "shift": profile["shift"], "crf": profile["crf"],
-        "pix_fmt": profile["pix_fmt"], "seed": random.randint(0, 2**31),
+        "width": profile["width"],
+        "height": profile["height"],
+        "frames": profile["frames"],
+        "fps": profile["fps"],
+        "steps": profile["steps"],
+        "cfg": profile["cfg"],
+        "shift": profile["shift"],
+        "crf": profile["crf"],
+        "pix_fmt": profile["pix_fmt"],
+        "seed": random.randint(0, 2**31),
     }
 
 
-def build_wan_prompt(wan_model, text_encoder, vae, positive, negative,
-                     width, height, frames, fps, steps, cfg, crf, pix_fmt,
-                     seed, shift, output_prefix):
+def build_wan_prompt(
+    wan_model,
+    text_encoder,
+    vae,
+    positive,
+    negative,
+    width,
+    height,
+    frames,
+    fps,
+    steps,
+    cfg,
+    crf,
+    pix_fmt,
+    seed,
+    shift,
+    output_prefix,
+):
     """Workflow built-in para Wan2.1 T2V usando ComfyUI-WanVideoWrapper (kijai).
     Nodos verificados contra nodes_model_loading.py + nodes.py + nodes_sampler.py.
     Paths: diffusion_models/ | text_encoders/ | vae/
     """
     return {
-        "1": {"class_type": "WanVideoModelLoader", "inputs": {
-            "model": wan_model, "base_precision": "bf16",
-            "quantization": "disabled", "load_device": "offload_device",
-        }},
-        "2": {"class_type": "LoadWanVideoT5TextEncoder", "inputs": {
-            "model_name": text_encoder, "precision": "bf16",
-            "load_device": "offload_device", "quantization": "disabled",
-        }},
-        "3": {"class_type": "WanVideoVAELoader", "inputs": {
-            "model_name": vae, "precision": "bf16",
-        }},
-        "4": {"class_type": "WanVideoTextEncode", "inputs": {
-            "positive_prompt": positive, "negative_prompt": negative,
-            "t5": ["2", 0], "force_offload": True,
-        }},
-        "5": {"class_type": "WanVideoEmptyEmbeds", "inputs": {
-            "width": width, "height": height, "num_frames": frames,
-        }},
-        "6": {"class_type": "WanVideoSampler", "inputs": {
-            "model": ["1", 0], "image_embeds": ["5", 0], "text_embeds": ["4", 0],
-            "steps": steps, "cfg": cfg, "shift": shift, "seed": seed,
-            "scheduler": "unipc", "riflex_freq_index": 0, "force_offload": True,
-        }},
-        "7": {"class_type": "WanVideoDecode", "inputs": {
-            "vae": ["3", 0], "samples": ["6", 0],
-            "enable_vae_tiling": True,
-            "tile_x": 272, "tile_y": 272, "tile_stride_x": 144, "tile_stride_y": 128,
-        }},
-        "8": {"class_type": "VHS_VideoCombine", "inputs": {
-            "images": ["7", 0], "frame_rate": fps, "loop_count": 0,
-            "filename_prefix": output_prefix, "format": "video/h264-mp4",
-            "pix_fmt": pix_fmt, "crf": crf, "save_metadata": True,
-            "trim_to_audio": False, "pingpong": False, "save_output": True,
-        }},
+        "1": {
+            "class_type": "WanVideoModelLoader",
+            "inputs": {
+                "model": wan_model,
+                "base_precision": "bf16",
+                "quantization": "disabled",
+                "load_device": "offload_device",
+            },
+        },
+        "2": {
+            "class_type": "LoadWanVideoT5TextEncoder",
+            "inputs": {
+                "model_name": text_encoder,
+                "precision": "bf16",
+                "load_device": "offload_device",
+                "quantization": "disabled",
+            },
+        },
+        "3": {
+            "class_type": "WanVideoVAELoader",
+            "inputs": {
+                "model_name": vae,
+                "precision": "bf16",
+            },
+        },
+        "4": {
+            "class_type": "WanVideoTextEncode",
+            "inputs": {
+                "positive_prompt": positive,
+                "negative_prompt": negative,
+                "t5": ["2", 0],
+                "force_offload": True,
+            },
+        },
+        "5": {
+            "class_type": "WanVideoEmptyEmbeds",
+            "inputs": {
+                "width": width,
+                "height": height,
+                "num_frames": frames,
+            },
+        },
+        "6": {
+            "class_type": "WanVideoSampler",
+            "inputs": {
+                "model": ["1", 0],
+                "image_embeds": ["5", 0],
+                "text_embeds": ["4", 0],
+                "steps": steps,
+                "cfg": cfg,
+                "shift": shift,
+                "seed": seed,
+                "scheduler": "unipc",
+                "riflex_freq_index": 0,
+                "force_offload": True,
+            },
+        },
+        "7": {
+            "class_type": "WanVideoDecode",
+            "inputs": {
+                "vae": ["3", 0],
+                "samples": ["6", 0],
+                "enable_vae_tiling": True,
+                "tile_x": 272,
+                "tile_y": 272,
+                "tile_stride_x": 144,
+                "tile_stride_y": 128,
+            },
+        },
+        "8": {
+            "class_type": "VHS_VideoCombine",
+            "inputs": {
+                "images": ["7", 0],
+                "frame_rate": fps,
+                "loop_count": 0,
+                "filename_prefix": output_prefix,
+                "format": "video/h264-mp4",
+                "pix_fmt": pix_fmt,
+                "crf": crf,
+                "save_metadata": True,
+                "trim_to_audio": False,
+                "pingpong": False,
+                "save_output": True,
+            },
+        },
     }
 
 
@@ -1388,7 +1683,11 @@ def submit_wan_scene(form_data):
     cfg = max(1.0, min(10.0, float(form_data["cfg"])))
     shift = max(1.0, min(20.0, float(form_data.get("shift", "5.0"))))
     crf = clamp_step(int(form_data["crf"]), 14, 26, 1)
-    pix_fmt = form_data["pix_fmt"] if form_data["pix_fmt"] in ("yuv420p", "yuv420p10le") else "yuv420p"
+    pix_fmt = (
+        form_data["pix_fmt"]
+        if form_data["pix_fmt"] in ("yuv420p", "yuv420p10le")
+        else "yuv420p"
+    )
     seed = max(0, int(form_data["seed"]))
     positive = form_data["positive_prompt"].strip()
     negative = form_data["negative_prompt"].strip()
@@ -1398,9 +1697,14 @@ def submit_wan_scene(form_data):
 
     # Pre-flight: verificar nodos instalados
     required_wan = [
-        "WanVideoModelLoader", "LoadWanVideoT5TextEncoder", "WanVideoVAELoader",
-        "WanVideoTextEncode", "WanVideoEmptyEmbeds", "WanVideoSampler",
-        "WanVideoDecode", "VHS_VideoCombine",
+        "WanVideoModelLoader",
+        "LoadWanVideoT5TextEncoder",
+        "WanVideoVAELoader",
+        "WanVideoTextEncode",
+        "WanVideoEmptyEmbeds",
+        "WanVideoSampler",
+        "WanVideoDecode",
+        "VHS_VideoCombine",
     ]
     missing = check_comfy_nodes(required_wan)
     if missing:
@@ -1425,11 +1729,25 @@ def submit_wan_scene(form_data):
                 try:
                     api_wf = json.loads(p.read_text(encoding="utf-8"))
                     prompt = patch_api_workflow(
-                        api_wf, positive, negative, "",
-                        width, height, frames, fps, steps, cfg, 1.0,
-                        crf, pix_fmt, seed, output_prefix,
-                        wan_model=preset["model"], shift=shift,
-                        text_encoder=preset["text_encoder"], vae=preset["vae"],
+                        api_wf,
+                        positive,
+                        negative,
+                        "",
+                        width,
+                        height,
+                        frames,
+                        fps,
+                        steps,
+                        cfg,
+                        1.0,
+                        crf,
+                        pix_fmt,
+                        seed,
+                        output_prefix,
+                        wan_model=preset["model"],
+                        shift=shift,
+                        text_encoder=preset["text_encoder"],
+                        vae=preset["vae"],
                     )
                     workflow_file = name
                     break
@@ -1438,11 +1756,22 @@ def submit_wan_scene(form_data):
 
     if prompt is None:
         prompt = build_wan_prompt(
-            wan_model=preset["model"], text_encoder=preset["text_encoder"],
-            vae=preset["vae"], positive=positive, negative=negative,
-            width=width, height=height, frames=frames, fps=fps,
-            steps=steps, cfg=cfg, crf=crf, pix_fmt=pix_fmt,
-            seed=seed, shift=shift, output_prefix=output_prefix,
+            wan_model=preset["model"],
+            text_encoder=preset["text_encoder"],
+            vae=preset["vae"],
+            positive=positive,
+            negative=negative,
+            width=width,
+            height=height,
+            frames=frames,
+            fps=fps,
+            steps=steps,
+            cfg=cfg,
+            crf=crf,
+            pix_fmt=pix_fmt,
+            seed=seed,
+            shift=shift,
+            output_prefix=output_prefix,
         )
 
     try:
@@ -1457,12 +1786,15 @@ def submit_wan_scene(form_data):
             detail = err.get("details", "")
             if node_errors:
                 missing_nodes = [
-                    v.get("class_type", nid) for nid, v in node_errors.items()
+                    v.get("class_type", nid)
+                    for nid, v in node_errors.items()
                     if "does not exist" in str(v.get("errors", ""))
                 ]
                 if missing_nodes:
-                    msg = (f"Nodos no encontrados: {', '.join(missing_nodes)}. "
-                           "Instala el custom node y reinicia ComfyUI.")
+                    msg = (
+                        f"Nodos no encontrados: {', '.join(missing_nodes)}. "
+                        "Instala el custom node y reinicia ComfyUI."
+                    )
             full = f"HTTP {exc.code}: {msg}"
             if detail and detail not in msg:
                 full += f" ({detail})"
@@ -1477,8 +1809,10 @@ def submit_wan_scene(form_data):
         return {"ok": False, "message": f"ComfyUI no aceptó el prompt: {response}"}
 
     return {
-        "ok": True, "message": "Escena Wan2.1 encolada en ComfyUI.",
-        "prompt_id": prompt_id, "output_prefix": output_prefix,
+        "ok": True,
+        "message": "Escena Wan2.1 encolada en ComfyUI.",
+        "prompt_id": prompt_id,
+        "output_prefix": output_prefix,
         "workflow_mode": "external" if workflow_file else "built-in",
         "workflow_file": workflow_file,
         "used_model": preset["model"],
@@ -1495,16 +1829,26 @@ def export_wan_workflow(form_data):
     try:
         ensure_dir(WORKFLOWS_DIR)
         workflow = build_wan_prompt(
-            wan_model=preset["model"], text_encoder=preset["text_encoder"],
-            vae=preset["vae"], positive="YOUR POSITIVE PROMPT HERE",
+            wan_model=preset["model"],
+            text_encoder=preset["text_encoder"],
+            vae=preset["vae"],
+            positive="YOUR POSITIVE PROMPT HERE",
             negative="worst quality, low quality, lowres, blurry, deformed, watermark",
-            width=profile["width"], height=profile["height"],
-            frames=profile["frames"], fps=profile["fps"],
-            steps=profile["steps"], cfg=profile["cfg"],
-            crf=profile["crf"], pix_fmt=profile["pix_fmt"],
-            seed=42, shift=profile["shift"], output_prefix="wan_output/exported",
+            width=profile["width"],
+            height=profile["height"],
+            frames=profile["frames"],
+            fps=profile["fps"],
+            steps=profile["steps"],
+            cfg=profile["cfg"],
+            crf=profile["crf"],
+            pix_fmt=profile["pix_fmt"],
+            seed=42,
+            shift=profile["shift"],
+            output_prefix="wan_output/exported",
         )
-        output_path.write_text(json.dumps(workflow, indent=2, ensure_ascii=False), encoding="utf-8")
+        output_path.write_text(
+            json.dumps(workflow, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         return {"ok": True, "path": str(output_path), "message": "Workflow exportado."}
     except Exception as exc:
         return {"ok": False, "message": str(exc)}
@@ -1517,14 +1861,18 @@ app = Flask(__name__)
 @app.route("/")
 def index():
     status = check_all_status()
-    return render_template_string(HTML,
-        comfy_port=COMFY_PORT, ow_port=OW_PORT,
-        ollama_port=OLLAMA_PORT, voice_port=VOICE_PORT,
+    return render_template_string(
+        HTML,
+        comfy_port=COMFY_PORT,
+        ow_port=OW_PORT,
+        ollama_port=OLLAMA_PORT,
+        voice_port=VOICE_PORT,
         comfy_up=status.get("comfy", False),
         ow_up=status.get("openwebui", False),
         ollama_up=status.get("ollama", False),
         voice_up=status.get("voice", False),
-        ow_container=OW_CONTAINER, ow_image=OW_IMAGE,
+        ow_container=OW_CONTAINER,
+        ow_image=OW_IMAGE,
         voice_script=VOICE_SCRIPT.name,
     )
 
@@ -1552,8 +1900,10 @@ def video_scene():
             server_result_ok=bool(result.get("ok")),
         )
     form = default_video_form()
-    return render_template_string(VIDEO_TOOL_HTML,
-        form=form, model_presets=VIDEO_MODEL_PRESETS,
+    return render_template_string(
+        VIDEO_TOOL_HTML,
+        form=form,
+        model_presets=VIDEO_MODEL_PRESETS,
         smooth_profiles=VIDEO_SMOOTH_PROFILES,
         smooth_profiles_json=json.dumps(VIDEO_SMOOTH_PROFILES),
         server_result=None,
@@ -1579,8 +1929,10 @@ def wan_video():
             server_result_ok=bool(result.get("ok")),
         )
     form = default_wan_form()
-    return render_template_string(WAN_TOOL_HTML,
-        form=form, model_presets=WAN_MODEL_PRESETS,
+    return render_template_string(
+        WAN_TOOL_HTML,
+        form=form,
+        model_presets=WAN_MODEL_PRESETS,
         video_profiles=WAN_VIDEO_PROFILES,
         video_profiles_json=json.dumps(WAN_VIDEO_PROFILES),
         server_result=None,
@@ -1626,30 +1978,43 @@ def ollama_models_create():
 
 @app.post("/svc/comfy/<action>")
 def svc_comfy(action):
-    if action == "start": comfy_start()
-    elif action == "stop": comfy_stop()
-    elif action == "restart": comfy_stop(); time.sleep(0.3); comfy_start()
+    if action == "start":
+        comfy_start()
+    elif action == "stop":
+        comfy_stop()
+    elif action == "restart":
+        comfy_stop()
+        time.sleep(0.3)
+        comfy_start()
     return ("", 204)
 
 
 @app.post("/svc/voice/<action>")
 def svc_voice(action):
-    if action == "start": voice_start()
-    elif action == "stop": voice_stop()
-    elif action == "restart": voice_stop(); time.sleep(0.3); voice_start()
+    if action == "start":
+        voice_start()
+    elif action == "stop":
+        voice_stop()
+    elif action == "restart":
+        voice_stop()
+        time.sleep(0.3)
+        voice_start()
     return ("", 204)
 
 
 @app.post("/svc/ollama/<action>")
 def svc_ollama(action):
-    if action == "start": ollama_start()
+    if action == "start":
+        ollama_start()
     return ("", 204)
 
 
 @app.post("/svc/openwebui/<action>")
 def svc_openwebui(action):
-    if action == "start": openwebui_start()
-    elif action == "stop": openwebui_stop()
+    if action == "start":
+        openwebui_start()
+    elif action == "stop":
+        openwebui_stop()
     return ("", 204)
 
 

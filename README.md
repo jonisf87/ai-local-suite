@@ -1,14 +1,3 @@
-AI-LocalSuite — Manual técnico paso a paso (uso local)
-Ruta base del proyecto: /home/jonathan/ai
-
-Puertos por defecto:
-- ComfyUI:      8188
-- Open WebUI:   8080  (conecta a Ollama en 11434)
-- Ollama API:   11434 (systemd --user)
-- Voice UI:     7862  (script voice_assistant_ui.py o live)
-- Landing UI:   5000  (script landing UI)
-
-Estructura recomendada de carpetas:
   # AI-LocalSuite — Manual técnico paso a paso (uso local)
 
   **Ruta base del proyecto:** `/home/jonathan/ai`
@@ -19,31 +8,35 @@ Estructura recomendada de carpetas:
   - Open WebUI: 8080 (conecta a Ollama en 11434)
   - Ollama API: 11434 (systemd --user)
   - Voice UI: 7862 (script `voice_assistant_ui.py` o variantes live)
-  - Django Chatbot: 8000 (script `manage.py runserver`)
   - Landing Manager UI: 5000 (script `landing_manager.py`)
 
   ## Estructura recomendada de carpetas
 
   ```
   /home/jonathan/ai
-  ├── ComfyUI/                 (generación de imágenes)
-  ├── adult_chatbot_manga/     (Django chatbot con personajes)
-  ├── audio/                   (audios de prueba)
-  ├── models/                  (modelos propios opcionales)
-  ├── piper/                   (modelos TTS Piper *.onnx y *.json)
-  ├── voice_out/               (salida de audio del TTS)  ├── modelfiles/              (Modelfiles personalizados de Ollama)
-  │   ├── security-auditor     (auditor de seguridad)
-  │   ├── python-expert        (experto Python)
-  │   ├── devops-expert        (experto DevOps)
-  │   ├── voice-assistant      (asistente de voz optimizado)
-  │   ├── custom               (asistente general sin censura)
-│   ├── create-all-models.sh (script para crear todos)
-  │   └── README.md            (documentación de modelos)  ├── ai-local-suite/          (repositorio “suite” con scripts y docs)
-  ├── transcribe_ui.py         (UI de transcripción Whisper)
-  ├── voice_assistant_ui.py    (UI de asistente de voz)
-  ├── voice_assistant_live*.py (variantes live del asistente de voz)
-  ├── landing_manager.py       (gestor/landing para lanzar y controlar UIs)
-  └── (otros scripts .py)
+  ├── ComfyUI/                   (generación de imágenes y vídeo)
+  │   └── workflows/             (workflows por personaje: akika_video.json, etc.)
+  ├── piper/                     (modelos TTS Piper *.onnx y *.json)
+  ├── voice_out/                 (salida de audio del TTS)
+  ├── modelfiles/                (Modelfiles personalizados de Ollama)
+  │   ├── security-auditor
+  │   ├── python-expert
+  │   ├── devops-expert
+  │   ├── voice-assistant
+  │   ├── custom
+  │   ├── create-all-models.sh
+  │   └── README.md
+  ├── venv/                      (entorno virtual Python compartido)
+  └── ai-local-suite/            (este repositorio)
+      ├── landing_manager.py     (gestor web — puerto 5000)
+      ├── transcribe_ui.py       (UI transcripción Whisper — puerto 7860)
+      ├── voice_assistant_ui.py  (UI asistente de voz — puerto 7862)
+      ├── voice_assistant_live3.py (variante live del asistente)
+      ├── requirements.txt
+      ├── .env.example
+      ├── static/                (assets estáticos, actualmente vacío)
+      ├── voice_out/             (salida TTS local al repo)
+      └── README.md
   ```
 
   ---
@@ -165,10 +158,9 @@ Estructura recomendada de carpetas:
   docker run -d --name open-webui \
     --network host \
     -e OLLAMA_BASE_URL=http://127.0.0.1:11434 \
-    -e WEBUI_NAME="Local WebUI" \
-    -v openwebui-data:/app/backend/data \
-    --restart unless-stopped \
-    ghcr.io/open-webui/open-webui:main
+    -v openwebui-data:/app/backend/data \\
+    --restart unless-stopped \\
+    ghcr.io/open-webui/open-webui:latest
   ```
 
   > **Nota importante**: Usamos `--network host` para que Open WebUI pueda conectarse a Ollama que corre en el host. Esto es esencial en WSL2.
@@ -244,10 +236,9 @@ Estructura recomendada de carpetas:
   docker run -d --name open-webui \
     --network host \
     -e OLLAMA_BASE_URL=http://127.0.0.1:11434 \
-    -e WEBUI_NAME="Local WebUI" \
-    -v openwebui-data:/app/backend/data \
-    --restart unless-stopped \
-    ghcr.io/open-webui/open-webui:main
+    -v openwebui-data:/app/backend/data \\
+    --restart unless-stopped \\
+    ghcr.io/open-webui/open-webui:latest
   
   # Verificar que funciona
   sleep 5
@@ -319,10 +310,10 @@ Estructura recomendada de carpetas:
 
   ```bash
   cd ~/ai/ComfyUI
-  # Opción A
-  python main.py --listen 0.0.0.0 --port 8188
-  # Opción B (si tienes script run.sh)
-  ./run.sh --listen 0.0.0.0 --port 8188
+  source ~/ai/venv/bin/activate
+  python main.py
+  # Si necesitas acceso desde fuera del host:
+  # python main.py --listen 0.0.0.0
   ```
 
   Abrir: `http://localhost:8188`
@@ -370,7 +361,9 @@ Estructura recomendada de carpetas:
   - Auto‑arranque (autostart) de servicios si están caídos: Ollama (servicio), Open WebUI (Docker), ComfyUI y Voice UI.
   - Panel con estado (UP/DOWN) por puerto y botones Start / Stop / Restart (cuando aplica).
   - Apertura directa de cada interfaz en nuevas pestañas.
-  - Comandos de referencia incrustados con la configuración correcta (`--network host` para Open WebUI).
+  - Visualización de modelos personalizados de Ollama con comando de uso.
+  - Comandos de referencia incrustados con la configuración correcta.
+  - Tool integrada de generación de vídeo con AnimateDiff SDXL (ver más abajo).
 
   Objetivo: centralizar en una sola página la gestión local de la suite sin recordar cada comando.
 
@@ -378,11 +371,11 @@ Estructura recomendada de carpetas:
 
   ```bash
   source ~/ai/venv/bin/activate
-  python /home/jonathan/ai/landing_manager.py
+  python /home/jonathan/ai/ai-local-suite/landing_manager.py
   # Abrir: http://localhost:5000
   ```
 
-  > **Nota**: El landing manager está configurado para arrancar Open WebUI con `--network host` automáticamente. Si tienes un contenedor antiguo, detén y elimínalo antes: `docker stop open-webui && docker rm open-webui`
+  > **Nota**: El landing manager usa `debug=True`, por lo que Flask recarga automáticamente si modificas el archivo. Con `Ctrl+Shift+R` en el navegador evitas caché del lado cliente.
 
   Comprobar puertos en caso de conflicto:
 
@@ -395,9 +388,29 @@ Estructura recomendada de carpetas:
   - ✅ Detección automática de servicios caídos
   - ✅ Arranque automático al iniciar (autostart)
   - ✅ Panel visual con estado en tiempo real
-  - ✅ Botones para controlar cada servicio
+  - ✅ Botones Start / Stop / Restart por servicio
   - ✅ Enlaces directos a cada UI
-  - ✅ Comandos de referencia actualizados
+  - ✅ Panel de modelos personalizados de Ollama
+  - ✅ Tool de generación de vídeo (`/tools/video-scene`)
+
+  ### Tool: Escena de vídeo (`/tools/video-scene`)
+
+  Interfaz integrada que encola generaciones directamente en la API de ComfyUI
+  usando AnimateDiff SDXL. Características:
+
+  - **Personajes**: Akika, Hinata, Kaede — cada uno carga su workflow base desde `~/ai/ComfyUI/workflows/{id}_video.json` si existe, con prompt positivo/negativo por defecto embebido.
+  - **Presets de modelo**: WAI NSFW Illustrious, RealVis XL V5, CyberRealistic XL V8, Juggernaut XL v9. También detecta automáticamente checkpoints SDXL compatibles instalados.
+  - **Perfiles de suavidad**:
+    - `Cinematic Stable` — 640×960, 32 frames, 10 fps, CFG 5.5, denoise 0.62
+    - `Fluid Dynamic` — 640×960, 28 frames, 12 fps, CFG 5.2, denoise 0.66
+  - Todos los parámetros (resolución, frames, fps, steps, CFG, denoise, CRF, pix_fmt, seed) son editables manualmente.
+  - Si ComfyUI está caído al enviar, lo arranca automáticamente antes de encolar.
+  - Los vídeos se guardan en `~/ai/ComfyUI/output/scene_builder/{personaje}/{timestamp}_{slug}.mp4`.
+
+  ```bash
+  # Acceder directamente
+  # http://localhost:5000/tools/video-scene
+  ```
 
   ## 8) Puesta en marcha — orden recomendado
 
@@ -429,10 +442,9 @@ Estructura recomendada de carpetas:
      docker start open-webui || docker run -d --name open-webui \
        --network host \
        -e OLLAMA_BASE_URL=http://127.0.0.1:11434 \
-       -e WEBUI_NAME="Local WebUI" \
-       -v openwebui-data:/app/backend/data \
-       --restart unless-stopped \
-       ghcr.io/open-webui/open-webui:main
+       -v openwebui-data:/app/backend/data \\
+       --restart unless-stopped \\
+       ghcr.io/open-webui/open-webui:latest
      ```
 
   3. **Lanzar ComfyUI**:
@@ -468,30 +480,27 @@ Estructura recomendada de carpetas:
   # Landing Manager: http://localhost:5000
   ```
 
-  ## 9) Git — subir `ai-local-suite` a repositorio privado
+  ## 9) Git — flujo de trabajo
 
-  Estructura mínima del repositorio:
-
-  ```
-  ~/ai/ai-local-suite/
-  ├── README.md
-  ├── scripts/
-  └── (otros archivos)
-  ```
-
-  Comandos básicos para inicializar y subir:
+  El repositorio ya existe en GitHub (`jonisf87/ai-local-suite`, rama `main`).
+  Comandos habituales:
 
   ```bash
   cd ~/ai/ai-local-suite
-  git init
-  git add .
-  git commit -m "AI Local Suite: primera versión"
-  git branch -M main
-  git remote add origin git@github.com:TU_USUARIO/ai-local-suite.git
-  git push -u origin main
+
+  # Ver estado
+  git status
+
+  # Stagear y commitear
+  git add -p                          # interactivo, recomendado
+  git commit -m "descripción del cambio"
+
+  # Subir
+  git push
   ```
 
-  > Crea el repo en GitHub (privado) y añade tu clave SSH si usas SSH.
+  > **Importante**: no subas modelos pesados (.safetensors, .ckpt, .onnx) ni el `venv/`.
+  > El `.gitignore` ya los excluye. Revísalo si añades rutas nuevas.
 
   ## 10) Comandos útiles de diagnóstico
 
