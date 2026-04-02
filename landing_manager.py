@@ -340,10 +340,15 @@ async function handleVideoSubmit(e){
   try{
     const resp=await fetch('/tools/video-scene',{method:'POST',body:new URLSearchParams(fd)});
     const data=await resp.json();r.className='result '+(data.ok?'ok':'err');
-    let msg=data.message||'';
+        let msg=data.message||'';
     if(data.prompt_id)msg+='\\nPrompt ID: '+data.prompt_id;
     if(data.output_prefix)msg+='\\nOutput: '+data.output_prefix;
-    if(data.workflow_file)msg+='\\nWorkflow: '+data.workflow_file;else msg+='\\n(workflow built-in)';
+        if(data.workflow_mode)msg+='\\nWorkflow mode: '+data.workflow_mode;
+        if(data.workflow_file)msg+='\\nWorkflow file: '+data.workflow_file;
+        if(data.used_checkpoint)msg+='\\nCheckpoint: '+data.used_checkpoint;
+        if(data.used_motion_model)msg+='\\nMotion model: '+data.used_motion_model;
+        if(data.used_positive_prompt)msg+='\\nPrompt+: '+data.used_positive_prompt;
+        if(data.ok && data.prompt_id)msg+='\\nQueue: http://localhost:8188/queue';
     r.textContent=msg;
     }catch(err){r.className='result err';r.textContent='Error: '+err;}
     return false;
@@ -431,11 +436,15 @@ async function handleWanSubmit(e){
   try{
     const resp=await fetch('/tools/wan-video',{method:'POST',body:new URLSearchParams(fd)});
     const data=await resp.json();r.className='result '+(data.ok?'ok':'err');
-    let msg=data.message||'';
+        let msg=data.message||'';
     if(data.prompt_id)msg+='\\nPrompt ID: '+data.prompt_id;
     if(data.output_prefix)msg+='\\nOutput: '+data.output_prefix;
-    if(data.workflow_file)msg+='\\nWorkflow: '+data.workflow_file;
-    else if(data.ok)msg+='\\n(workflow built-in — usa Exportar para personalizar)';
+        if(data.workflow_mode)msg+='\\nWorkflow mode: '+data.workflow_mode;
+        if(data.workflow_file)msg+='\\nWorkflow file: '+data.workflow_file;
+        if(data.used_model)msg+='\\nModel: '+data.used_model;
+        if(data.used_text_encoder)msg+='\\nText encoder: '+data.used_text_encoder;
+        if(data.used_vae)msg+='\\nVAE: '+data.used_vae;
+        if(data.used_positive_prompt)msg+='\\nPrompt+: '+data.used_positive_prompt;
     if(data.ok)msg+='\\n→ http://localhost:8188/queue';
     r.textContent=msg;
     }catch(err){r.className='result err';r.textContent='Error: '+err;}
@@ -1252,8 +1261,17 @@ def submit_video_scene(form_data):
     prompt_id = response.get("prompt_id")
     if not prompt_id:
         return {"ok": False, "message": f"ComfyUI no aceptó el prompt: {response}"}
-    return {"ok": True, "message": "Vídeo encolado en ComfyUI.", "prompt_id": prompt_id,
-            "output_prefix": output_prefix, "workflow_file": workflow_file}
+    return {
+        "ok": True,
+        "message": "Vídeo encolado en ComfyUI.",
+        "prompt_id": prompt_id,
+        "output_prefix": output_prefix,
+        "workflow_mode": "external" if workflow_file else "built-in",
+        "workflow_file": workflow_file,
+        "used_checkpoint": checkpoint,
+        "used_motion_model": motion_model,
+        "used_positive_prompt": positive,
+    }
 
 
 # --- WAN2.1 -------------------------------------------------------------------
@@ -1441,7 +1459,12 @@ def submit_wan_scene(form_data):
     return {
         "ok": True, "message": "Escena Wan2.1 encolada en ComfyUI.",
         "prompt_id": prompt_id, "output_prefix": output_prefix,
+        "workflow_mode": "external" if workflow_file else "built-in",
         "workflow_file": workflow_file,
+        "used_model": preset["model"],
+        "used_text_encoder": preset["text_encoder"],
+        "used_vae": preset["vae"],
+        "used_positive_prompt": positive,
     }
 
 
