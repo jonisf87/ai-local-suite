@@ -831,6 +831,23 @@ def check_comfy_nodes(required):
     return [n for n in required if n not in _comfy_nodes_cache]
 
 
+def get_comfy_object_info() -> dict:
+    try:
+        return comfy_api_get("/object_info")
+    except Exception as exc:
+        log.warning(f"No se pudo consultar object_info: {exc}")
+        return {}
+
+
+def get_node_input_options(obj_info: dict, node_class: str, input_name: str):
+    node = obj_info.get(node_class, {})
+    required = node.get("input", {}).get("required", {})
+    cfg = required.get(input_name)
+    if isinstance(cfg, list) and cfg and isinstance(cfg[0], list):
+        return cfg[0]
+    return []
+
+
 def _ensure_ollama_up(timeout: float = 20.0) -> bool:
     if port_open(OLLAMA_PORT):
         return True
@@ -1037,6 +1054,47 @@ def find_checkpoint(include_token):
     return None
 
 
+def resolve_checkpoint_name(obj_info: dict, preset: dict) -> str:
+    ckpt_options = get_node_input_options(obj_info, "CheckpointLoaderSimple", "ckpt_name")
+    if not ckpt_options:
+        return preset["checkpoint"]
+
+    include_token = preset.get("include_token", "").lower()
+    if include_token:
+        for ck in ckpt_options:
+            if include_token in ck.lower():
+                return ck
+
+    wanted = preset.get("checkpoint", "")
+    if wanted in ckpt_options:
+        return wanted
+    wanted_lower = wanted.lower()
+    for ck in ckpt_options:
+        if ck.lower() == wanted_lower:
+            return ck
+
+    return ckpt_options[0]
+
+
+def resolve_animatediff_motion(obj_info: dict):
+    node_name = "ADE_AnimateDiffLoaderWithContext"
+    if node_name not in obj_info:
+        node_name = "ADE_AnimateDiffLoaderGen1"
+    model_options = get_node_input_options(obj_info, node_name, "model_name")
+    beta_options = get_node_input_options(obj_info, node_name, "beta_schedule")
+
+    model_name = ""
+    if model_options:
+        preferred = "mm_sdxl_v10_beta.safetensors"
+        model_name = preferred if preferred in model_options else model_options[0]
+
+    beta_schedule = "autoselect"
+    if beta_options and beta_schedule not in beta_options:
+        beta_schedule = beta_options[0]
+
+    return model_name, beta_schedule
+
+
 def default_video_form():
     profile = VIDEO_SMOOTH_PROFILES[0]
     return {
@@ -1052,21 +1110,23 @@ def default_video_form():
     }
 
 
-def build_video_prompt(checkpoint, positive, negative, width, height, frames, fps,
-                       steps, cfg, denoise, crf, pix_fmt, seed, output_prefix):
+def build_video_prompt(checkpoint, motion_model, beta_schedule, positive, negative,
+                       width, height, frames, fps, steps, cfg, denoise,
+                       crf, pix_fmt, seed, output_prefix):
     return {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": checkpoint}},
         "2": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["1", 1]}},
         "3": {"class_type": "CLIPTextEncode", "inputs": {"text": negative, "clip": ["1", 1]}},
         "4": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
         "5": {"class_type": "ADE_AnimateDiffLoaderWithContext", "inputs": {
-            "model": ["1", 0], "context_length": frames,
-            "context_stride": 1, "context_overlap": 4, "closed_loop": False,
+            "model": ["1", 0],
+            "model_name": motion_model,
+            "beta_schedule": beta_schedule,
         }},
         "6": {"class_type": "KSampler", "inputs": {
             "model": ["5", 0], "positive": ["2", 0], "negative": ["3", 0],
             "latent_image": ["4", 0], "seed": seed, "steps": steps, "cfg": cfg,
-            "sampler_name": "euler_a", "scheduler": "karras", "denoise": denoise,
+            "sampler_name": "euler", "scheduler": "karras", "denoise": denoise,
         }},
         "7": {"class_type": "VAEDecode", "inputs": {"samples": ["6", 0], "vae": ["1", 2]}},
         "8": {"class_type": "VHS_VideoCombine", "inputs": {
@@ -1108,7 +1168,14 @@ def submit_video_scene(form_data):
     if not positive:
         return {"ok": False, "message": "El prompt positivo no puede estar vacío."}
 
-    checkpoint = find_checkpoint(preset["include_token"]) or preset["checkpoint"]
+    obj_info = get_comfy_object_info()
+    checkpoint = resolve_checkpoint_name(obj_info, preset)
+    motion_model, beta_schedule = resolve_animatediff_motion(obj_info)
+    if not motion_model:
+        return {
+            "ok": False,
+            "message": "No hay motion model de AnimateDiff cargado en ComfyUI (ADE model_name vacío).",
+        }
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     output_prefix = f"video_output/{timestamp}_{slugify_text(positive)[:48]}"
 
@@ -1130,9 +1197,24 @@ def submit_video_scene(form_data):
                 continue
 
     if prompt is None:
-        prompt = build_video_prompt(checkpoint, positive, negative, width, height,
-                                    frames, fps, steps, cfg, denoise, crf, pix_fmt,
-                                    seed, output_prefix)
+        prompt = build_video_prompt(
+            checkpoint=checkpoint,
+            motion_model=motion_model,
+            beta_schedule=beta_schedule,
+            positive=positive,
+            negative=negative,
+            width=width,
+            height=height,
+            frames=frames,
+            fps=fps,
+            steps=steps,
+            cfg=cfg,
+            denoise=denoise,
+            crf=crf,
+            pix_fmt=pix_fmt,
+            seed=seed,
+            output_prefix=output_prefix,
+        )
 
     try:
         response = comfy_api_post("/prompt", {"prompt": prompt})
@@ -1140,14 +1222,23 @@ def submit_video_scene(form_data):
         raw = exc.read().decode("utf-8", errors="ignore")
         try:
             err_body = json.loads(raw)
-            msg = err_body.get("error", {}).get("message", exc.reason)
+            err = err_body.get("error", {})
+            msg = err.get("message", exc.reason)
+            detail = err.get("details", "")
             node_errors = err_body.get("node_errors", {})
             if node_errors:
-                missing = [v.get("class_type", nid) for nid, v in node_errors.items()
-                           if "does not exist" in str(v.get("errors", ""))]
-                if missing:
-                    msg = f"Nodos no encontrados: {', '.join(missing)}."
+                node_msgs = []
+                for nid, v in node_errors.items():
+                    cls = v.get("class_type", nid)
+                    errs = v.get("errors", [])
+                    if errs:
+                        first = errs[0]
+                        node_msgs.append(f"{cls}: {first.get('details') or first.get('message')}")
+                if node_msgs:
+                    msg = " ; ".join(node_msgs[:3])
             full = f"HTTP {exc.code}: {msg}"
+            if detail and detail not in full:
+                full += f" ({detail})"
         except Exception:
             full = f"HTTP {exc.code}: {raw or exc.reason}"
         return {"ok": False, "message": full}
