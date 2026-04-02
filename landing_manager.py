@@ -285,7 +285,7 @@ button:hover{background:#264880}
 </style></head><body><div class="wrap">
 <h1>🎬 AnimateDiff SDXL — Generar Vídeo</h1>
 <div class="back"><a href="/">← Volver al gestor</a></div>
-<form id="vf" onsubmit="submit(event)">
+<form id="vf" method="post" onsubmit="return handleVideoSubmit(event)">
   <div class="section"><div class="section-title">Modelo y perfil</div>
     <div class="row">
       <div><label>Modelo SDXL</label><select name="model_preset">
@@ -332,7 +332,7 @@ function applyProfile(sel){
   const f=document.getElementById('vf');
   ['width','height','frames','fps','steps','cfg','denoise','crf'].forEach(k=>{if(f[k]&&p[k]!==undefined)f[k].value=p[k];});
 }
-async function submit(e){
+async function handleVideoSubmit(e){
   e.preventDefault();const r=document.getElementById('result');
   r.style.display='block';r.className='result';r.textContent='Enviando a ComfyUI...';
   const fd=new FormData(e.target);
@@ -344,7 +344,8 @@ async function submit(e){
     if(data.output_prefix)msg+='\\nOutput: '+data.output_prefix;
     if(data.workflow_file)msg+='\\nWorkflow: '+data.workflow_file;else msg+='\\n(workflow built-in)';
     r.textContent=msg;
-  }catch(err){r.className='result err';r.textContent='Error: '+err;}
+    }catch(err){r.className='result err';r.textContent='Error: '+err;}
+    return false;
 }
 </script></body></html>
 """
@@ -372,7 +373,7 @@ button:hover{background:#264880}button.sec{background:#1a2540;border-color:#2a35
 <h1>🎞️ Wan2.1 — Text to Video</h1>
 <div class="back"><a href="/">← Volver al gestor</a></div>
 <div class="note" style="margin-bottom:16px">Requiere: ComfyUI-WanVideoWrapper + modelos en <code>diffusion_models/</code>, <code>text_encoders/</code> y <code>vae/</code></div>
-<form id="wf" onsubmit="submit(event)">
+<form id="wf" method="post" onsubmit="return handleWanSubmit(event)">
   <div class="section"><div class="section-title">Modelo y perfil</div>
     <div class="row">
       <div><label>Modelo</label><select name="model_preset">
@@ -422,7 +423,7 @@ function applyProfile(sel){
   const f=document.getElementById('wf');
   ['width','height','frames','fps','steps','cfg','shift','crf'].forEach(k=>{if(f[k]&&p[k]!==undefined)f[k].value=p[k];});
 }
-async function submit(e){
+async function handleWanSubmit(e){
   e.preventDefault();const r=document.getElementById('result');
   r.style.display='block';r.className='result';r.textContent='Enviando a ComfyUI...';
   const fd=new FormData(e.target);
@@ -436,7 +437,8 @@ async function submit(e){
     else if(data.ok)msg+='\\n(workflow built-in — usa Exportar para personalizar)';
     if(data.ok)msg+='\\n→ http://localhost:8188/queue';
     r.textContent=msg;
-  }catch(err){r.className='result err';r.textContent='Error: '+err;}
+    }catch(err){r.className='result err';r.textContent='Error: '+err;}
+    return false;
 }
 async function exportWf(){
   const r=document.getElementById('result');r.style.display='block';r.className='result';r.textContent='Exportando...';
