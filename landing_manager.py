@@ -324,7 +324,7 @@ button:hover{background:#264880}
   </div>
     <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
         <button type="submit">🎬 Generar vídeo</button>
-        <a class="btn" href="http://localhost:8188/queue" target="_blank" rel="noopener noreferrer">📋 Abrir cola ComfyUI</a>
+        <a class="btn" href="http://localhost:8188" target="_blank" rel="noopener noreferrer">📋 Abrir ComfyUI (cola)</a>
     </div>
 </form>
 {% if server_result %}
@@ -359,7 +359,7 @@ async function handleVideoSubmit(e){
         if(data.used_checkpoint)msg+='\\nCheckpoint: '+data.used_checkpoint;
         if(data.used_motion_model)msg+='\\nMotion model: '+data.used_motion_model;
         if(data.used_positive_prompt)msg+='\\nPrompt+: '+data.used_positive_prompt;
-        if(data.ok && data.prompt_id)msg+='\\nQueue: http://localhost:8188/queue';
+        if(data.ok && data.prompt_id)msg+='\\nComfyUI: http://localhost:8188 (abre Queue en la barra lateral)';
     r.textContent=msg;
     }catch(err){r.className='result err';r.textContent='Error: '+err;}
     return false;
@@ -428,7 +428,7 @@ button:hover{background:#264880}button.sec{background:#1a2540;border-color:#2a35
   </div>
   <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
     <button type="submit">🎞️ Generar vídeo</button>
-        <a class="btn" href="http://localhost:8188/queue" target="_blank" rel="noopener noreferrer">📋 Abrir cola ComfyUI</a>
+        <a class="btn" href="http://localhost:8188" target="_blank" rel="noopener noreferrer">📋 Abrir ComfyUI (cola)</a>
     <button type="button" class="sec" onclick="exportWf()">📤 Exportar workflow JSON</button>
   </div>
 </form>
@@ -465,7 +465,7 @@ async function handleWanSubmit(e){
         if(data.used_text_encoder)msg+='\\nText encoder: '+data.used_text_encoder;
         if(data.used_vae)msg+='\\nVAE: '+data.used_vae;
         if(data.used_positive_prompt)msg+='\\nPrompt+: '+data.used_positive_prompt;
-    if(data.ok)msg+='\\n→ http://localhost:8188/queue';
+    if(data.ok)msg+='\\n→ ComfyUI: http://localhost:8188 (Queue en barra lateral)';
     r.textContent=msg;
     }catch(err){r.className='result err';r.textContent='Error: '+err;}
     return false;
