@@ -46,6 +46,7 @@ COMFY_DIR = AI_DIR / "ComfyUI"
 COMFY_CMD = f"cd {COMFY_DIR} && {AI_DIR}/venv/bin/python main.py"
 COMFY_PORT = 8188
 WORKFLOWS_DIR = COMFY_DIR / "workflows"
+USE_EXTERNAL_WORKFLOW_FILES = os.environ.get("LANDING_USE_EXTERNAL_WORKFLOWS", "0") == "1"
 
 OW_CONTAINER = "open-webui"
 OW_IMAGE = "ghcr.io/open-webui/open-webui:latest"
@@ -1183,20 +1184,21 @@ def submit_video_scene(form_data):
 
     workflow_file = None
     prompt = None
-    for fname in (f"{preset['id']}_video_api.json", "animatediff_video_api.json"):
-        p = WORKFLOWS_DIR / fname
-        if p.exists():
-            try:
-                api_wf = json.loads(p.read_text(encoding="utf-8"))
-                prompt = patch_api_workflow(
-                    api_wf, positive, negative, checkpoint,
-                    width, height, frames, fps, steps, cfg, denoise,
-                    crf, pix_fmt, seed, output_prefix,
-                )
-                workflow_file = fname
-                break
-            except Exception:
-                continue
+    if USE_EXTERNAL_WORKFLOW_FILES:
+        for fname in (f"{preset['id']}_video_api.json", "animatediff_video_api.json"):
+            p = WORKFLOWS_DIR / fname
+            if p.exists():
+                try:
+                    api_wf = json.loads(p.read_text(encoding="utf-8"))
+                    prompt = patch_api_workflow(
+                        api_wf, positive, negative, checkpoint,
+                        width, height, frames, fps, steps, cfg, denoise,
+                        crf, pix_fmt, seed, output_prefix,
+                    )
+                    workflow_file = fname
+                    break
+                except Exception:
+                    continue
 
     if prompt is None:
         prompt = build_video_prompt(
@@ -1378,22 +1380,23 @@ def submit_wan_scene(form_data):
 
     workflow_file = None
     prompt = None
-    for name in ("wan_txt2vid_api.json", "wan_video_api.json"):
-        p = WORKFLOWS_DIR / name
-        if p.exists():
-            try:
-                api_wf = json.loads(p.read_text(encoding="utf-8"))
-                prompt = patch_api_workflow(
-                    api_wf, positive, negative, "",
-                    width, height, frames, fps, steps, cfg, 1.0,
-                    crf, pix_fmt, seed, output_prefix,
-                    wan_model=preset["model"], shift=shift,
-                    text_encoder=preset["text_encoder"], vae=preset["vae"],
-                )
-                workflow_file = name
-                break
-            except Exception:
-                continue
+    if USE_EXTERNAL_WORKFLOW_FILES:
+        for name in ("wan_txt2vid_api.json", "wan_video_api.json"):
+            p = WORKFLOWS_DIR / name
+            if p.exists():
+                try:
+                    api_wf = json.loads(p.read_text(encoding="utf-8"))
+                    prompt = patch_api_workflow(
+                        api_wf, positive, negative, "",
+                        width, height, frames, fps, steps, cfg, 1.0,
+                        crf, pix_fmt, seed, output_prefix,
+                        wan_model=preset["model"], shift=shift,
+                        text_encoder=preset["text_encoder"], vae=preset["vae"],
+                    )
+                    workflow_file = name
+                    break
+                except Exception:
+                    continue
 
     if prompt is None:
         prompt = build_wan_prompt(
