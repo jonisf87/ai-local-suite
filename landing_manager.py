@@ -235,6 +235,11 @@ setInterval(pollStatus,5000);
     <div class="url" style="margin:4px 0 10px;opacity:.8">Text-to-video con Wan2.1 (ComfyUI-WanVideoWrapper)</div>
     <div class="btns"><a class="btn" href="/tools/wan-video">Abrir herramienta</a></div>
   </div>
+    <div class="tool-card">
+        <div class="name">🧠 Tool: Ollama Custom Models</div>
+        <div class="url" style="margin:4px 0 10px;opacity:.8">Lista, descarga y crea modelos custom con Modelfile</div>
+        <div class="btns"><a class="btn" href="/tools/ollama-models">Abrir herramienta</a></div>
+    </div>
 </div>
 <div class="help">
 <h3>Guía rápida</h3>
@@ -442,6 +447,113 @@ async function exportWf(){
   }catch(err){r.className='result err';r.textContent='Error: '+err;}
 }
 </script></body></html>
+"""
+
+# --- HTML OLLAMA CUSTOM MODELS TOOL ------------------------------------------
+OLLAMA_MODELS_HTML = """
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"><title>Ollama Custom Models</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{color-scheme:dark}body{font-family:ui-sans-serif,system-ui,Arial;background:#0f1115;color:#e5ecf5;margin:0}
+.wrap{max-width:900px;margin:40px auto;padding:0 20px}h1{font-size:24px;margin:0 0 6px}
+.back{font-size:13px;opacity:.7;margin-bottom:20px}.back a{color:#8ab4f8;text-decoration:none}
+.section{background:#0e1420;border:1px solid #1a2a4a;border-radius:12px;padding:14px;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+label{display:block;font-size:13px;opacity:.8;margin:12px 0 3px}
+input,textarea{width:100%;box-sizing:border-box;background:#131826;border:1px solid #2a3144;border-radius:8px;color:#e5ecf5;padding:8px 10px;font-size:14px}
+textarea{height:140px;resize:vertical}.row{display:flex;gap:12px}.row>div{flex:1}
+button{margin-top:12px;background:#1e3a6e;border:1px solid #2a5098;color:#e5ecf5;padding:10px 22px;border-radius:10px;font-size:15px;cursor:pointer}
+button:hover{background:#264880}button.sec{background:#1a2540;border-color:#2a3560;margin-left:10px}
+.result{margin-top:16px;background:#131826;border:1px solid #2a3144;border-radius:10px;padding:14px;font-size:14px;white-space:pre-wrap}
+.ok{color:#8ae6a2}.err{color:#f2a6a6}
+ul{margin:0;padding-left:18px}
+</style></head><body><div class="wrap">
+<h1>🧠 Ollama Custom Models</h1>
+<div class="back"><a href="/">← Volver al gestor</a></div>
+
+<div class="section">
+    <div class="section-title">Modelos locales</div>
+    <button type="button" onclick="refreshModels()">Actualizar lista</button>
+    <div id="models" class="result" style="margin-top:10px">Cargando...</div>
+</div>
+
+<div class="section">
+    <div class="section-title">Descargar modelo base (pull)</div>
+    <label>Modelo</label>
+    <input id="pull_model" placeholder="ej: llama3.1:8b o qwen2.5:14b" />
+    <button type="button" onclick="pullModel()">Descargar</button>
+</div>
+
+<div class="section">
+    <div class="section-title">Crear modelo custom (modelfile)</div>
+    <div class="row">
+        <div>
+            <label>Nombre del nuevo modelo</label>
+            <input id="new_model" placeholder="ej: jonathan/qwen2.5-geospatial:latest" />
+        </div>
+        <div>
+            <label>Modelo base</label>
+            <input id="base_model" placeholder="ej: qwen2.5:14b" />
+        </div>
+    </div>
+    <label>System prompt</label>
+    <textarea id="system_prompt" placeholder="Eres un asistente experto en GIS...\nResponde conciso..."></textarea>
+    <button type="button" onclick="createCustom()">Crear custom model</button>
+</div>
+
+<div id="result" class="result" style="display:none"></div>
+
+</div>
+<script>
+function show(msg, ok=true){
+    const r=document.getElementById('result');
+    r.style.display='block';
+    r.className='result '+(ok?'ok':'err');
+    r.textContent=msg;
+}
+
+async function refreshModels(){
+    const out=document.getElementById('models');
+    out.textContent='Cargando modelos...';
+    try{
+        const resp=await fetch('/tools/ollama-models/list');
+        const data=await resp.json();
+        if(!data.ok){out.textContent='Error: '+(data.message||'');return;}
+        if(!data.models || !data.models.length){out.textContent='No hay modelos locales todavía.';return;}
+        out.innerHTML='<ul>'+data.models.map(m=>`<li>${m}</li>`).join('')+'</ul>';
+    }catch(err){out.textContent='Error: '+err;}
+}
+
+async function pullModel(){
+    const model=document.getElementById('pull_model').value.trim();
+    if(!model){show('Indica un modelo para descargar.', false);return;}
+    show('Descargando modelo en Ollama... puede tardar.');
+    try{
+        const resp=await fetch('/tools/ollama-models/pull',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model})});
+        const data=await resp.json();
+        show(data.message||'OK', !!data.ok);
+        if(data.ok) refreshModels();
+    }catch(err){show('Error: '+err, false);}
+}
+
+async function createCustom(){
+    const model=document.getElementById('new_model').value.trim();
+    const base=document.getElementById('base_model').value.trim();
+    const system=document.getElementById('system_prompt').value.trim();
+    if(!model || !base){show('Completa nombre y modelo base.', false);return;}
+    show('Creando modelo custom en Ollama...');
+    try{
+        const resp=await fetch('/tools/ollama-models/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model_name:model,base_model:base,system_prompt:system})});
+        const data=await resp.json();
+        show(data.message||'OK', !!data.ok);
+        if(data.ok) refreshModels();
+    }catch(err){show('Error: '+err, false);}
+}
+
+refreshModels();
+</script>
+</body></html>
 """
 
 # --- UTILIDADES ---------------------------------------------------------------
@@ -698,6 +810,86 @@ def check_comfy_nodes(required):
             log.warning(f"No se pudo consultar /object_info: {exc}")
             return []
     return [n for n in required if n not in _comfy_nodes_cache]
+
+
+def _ensure_ollama_up(timeout: float = 20.0) -> bool:
+    if port_open(OLLAMA_PORT):
+        return True
+    ollama_start()
+    return _wait_for_port(OLLAMA_PORT, timeout=timeout)
+
+
+def ollama_api_get(path: str) -> dict:
+    url = f"http://127.0.0.1:{OLLAMA_PORT}{path}"
+    with urlrequest.urlopen(url, timeout=15) as resp:
+        return json.loads(resp.read())
+
+
+def ollama_api_post(path: str, payload: dict, timeout: float = 600.0) -> dict:
+    url = f"http://127.0.0.1:{OLLAMA_PORT}{path}"
+    data = json.dumps(payload).encode()
+    req = urlrequest.Request(url, data=data, headers={"Content-Type": "application/json"})
+    with urlrequest.urlopen(req, timeout=timeout) as resp:
+        body = resp.read().decode("utf-8", errors="ignore").strip()
+    if not body:
+        return {}
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError:
+        # Algunos endpoints pueden devolver NDJSON/stream; nos quedamos con la última línea JSON.
+        last_json = {}
+        for line in body.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                last_json = json.loads(line)
+            except Exception:
+                continue
+        return last_json
+
+
+def ollama_list_models():
+    if not _ensure_ollama_up():
+        return {"ok": False, "message": "Ollama no está disponible."}
+    try:
+        data = ollama_api_get("/api/tags")
+        models = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
+        return {"ok": True, "models": sorted(models)}
+    except Exception as exc:
+        return {"ok": False, "message": f"Error listando modelos: {exc}"}
+
+
+def ollama_pull_model(model_name: str):
+    if not _ensure_ollama_up():
+        return {"ok": False, "message": "Ollama no está disponible."}
+    if not model_name:
+        return {"ok": False, "message": "Falta el nombre del modelo."}
+    try:
+        ollama_api_post("/api/pull", {"name": model_name, "stream": False}, timeout=1800.0)
+        return {"ok": True, "message": f"Modelo descargado: {model_name}"}
+    except Exception as exc:
+        return {"ok": False, "message": f"Error en pull: {exc}"}
+
+
+def ollama_create_custom_model(model_name: str, base_model: str, system_prompt: str):
+    if not _ensure_ollama_up():
+        return {"ok": False, "message": "Ollama no está disponible."}
+    if not model_name or not base_model:
+        return {"ok": False, "message": "model_name y base_model son obligatorios."}
+    modelfile = f"FROM {base_model}\n"
+    if system_prompt:
+        escaped = system_prompt.replace('"""', '\\"\\"\\"')
+        modelfile += f"SYSTEM \"\"\"{escaped}\"\"\"\n"
+    try:
+        ollama_api_post(
+            "/api/create",
+            {"name": model_name, "modelfile": modelfile, "stream": False},
+            timeout=1800.0,
+        )
+        return {"ok": True, "message": f"Modelo custom creado: {model_name}"}
+    except Exception as exc:
+        return {"ok": False, "message": f"Error creando modelo custom: {exc}"}
 
 
 # --- WORKFLOWS ----------------------------------------------------------------
@@ -1165,6 +1357,32 @@ def wan_video():
 @app.route("/tools/wan-video/export", methods=["POST"])
 def wan_video_export():
     return jsonify(export_wan_workflow(request.form.to_dict()))
+
+
+@app.route("/tools/ollama-models", methods=["GET"])
+def ollama_models_tool():
+    return render_template_string(OLLAMA_MODELS_HTML)
+
+
+@app.route("/tools/ollama-models/list", methods=["GET"])
+def ollama_models_list():
+    return jsonify(ollama_list_models())
+
+
+@app.route("/tools/ollama-models/pull", methods=["POST"])
+def ollama_models_pull():
+    body = request.get_json(silent=True) or {}
+    model_name = str(body.get("model", "")).strip()
+    return jsonify(ollama_pull_model(model_name))
+
+
+@app.route("/tools/ollama-models/create", methods=["POST"])
+def ollama_models_create():
+    body = request.get_json(silent=True) or {}
+    model_name = str(body.get("model_name", "")).strip()
+    base_model = str(body.get("base_model", "")).strip()
+    system_prompt = str(body.get("system_prompt", ""))
+    return jsonify(ollama_create_custom_model(model_name, base_model, system_prompt))
 
 
 @app.post("/svc/comfy/<action>")
