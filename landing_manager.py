@@ -1464,7 +1464,7 @@ def resolve_checkpoint_name(obj_info: dict, preset: dict) -> str:
     return ckpt_options[0]
 
 
-def resolve_animatediff_motion(obj_info: dict):
+def resolve_animatediff_motion(obj_info: dict, checkpoint_name: str = ""):
     node_name = "ADE_AnimateDiffLoaderWithContext"
     if node_name not in obj_info:
         node_name = "ADE_AnimateDiffLoaderGen1"
@@ -1473,8 +1473,22 @@ def resolve_animatediff_motion(obj_info: dict):
 
     model_name = ""
     if model_options:
-        preferred = "mm_sdxl_v10_beta.safetensors"
-        model_name = preferred if preferred in model_options else model_options[0]
+        ckpt_lower = checkpoint_name.lower()
+
+        # Si el checkpoint es SDXL, forzamos motion model SDXL.
+        if "sdxl" in ckpt_lower or "xl" in ckpt_lower:
+            for preferred in ("mm_sdxl_v10_beta.ckpt", "mm_sdxl_v10_beta.safetensors"):
+                if preferred in model_options:
+                    model_name = preferred
+                    break
+            if not model_name:
+                for m in model_options:
+                    if "sdxl" in m.lower():
+                        model_name = m
+                        break
+
+        if not model_name:
+            model_name = model_options[0]
 
     beta_schedule = "autoselect"
     if beta_options and beta_schedule not in beta_options:
@@ -1637,11 +1651,21 @@ def submit_video_scene(form_data):
 
     obj_info = get_comfy_object_info()
     checkpoint = resolve_checkpoint_name(obj_info, preset)
-    motion_model, beta_schedule = resolve_animatediff_motion(obj_info)
+    motion_model, beta_schedule = resolve_animatediff_motion(obj_info, checkpoint)
     if not motion_model:
         return {
             "ok": False,
             "message": "No hay motion model de AnimateDiff cargado en ComfyUI (ADE model_name vacío).",
+        }
+    if ("sdxl" in checkpoint.lower() or "xl" in checkpoint.lower()) and (
+        "sdxl" not in motion_model.lower()
+    ):
+        return {
+            "ok": False,
+            "message": (
+                "Checkpoint SDXL detectado pero no hay motion model SDXL compatible en AnimateDiff. "
+                "Instala/carga mm_sdxl_v10_beta (.ckpt o .safetensors) y reinicia ComfyUI."
+            ),
         }
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     output_prefix = f"video_output/{timestamp}_{slugify_text(positive)[:48]}"
