@@ -55,6 +55,18 @@ OLLAMA_PORT = 11434
 VOICE_SCRIPT = AI_DIR / "voice_assistant_ui.py"
 VOICE_CMD = f"{AI_DIR}/venv/bin/python {VOICE_SCRIPT}"
 VOICE_PORT = 7862
+WAN_WRAPPER_DIR = COMFY_DIR / "custom_nodes" / "ComfyUI-WanVideoWrapper"
+
+WAN_REQUIRED_NODES = [
+    "WanVideoModelLoader",
+    "LoadWanVideoT5TextEncoder",
+    "WanVideoVAELoader",
+    "WanVideoTextEncode",
+    "WanVideoEmptyEmbeds",
+    "WanVideoSampler",
+    "WanVideoDecode",
+    "VHS_VideoCombine",
+]
 
 SERVICES = [
     {"key": "comfy",     "label": "ComfyUI",    "port": COMFY_PORT},
@@ -520,7 +532,54 @@ def comfy_start():
 
 
 def comfy_stop():
+    global _comfy_nodes_cache
+    _comfy_nodes_cache = None
     kill_from_pidfile(COMFY_PID)
+
+
+def comfy_restart(wait_timeout: float = 45.0) -> bool:
+    comfy_stop()
+    time.sleep(0.6)
+    comfy_start()
+    up = _wait_for_port(COMFY_PORT, timeout=wait_timeout)
+    if up:
+        log.info("ComfyUI UP tras restart")
+    else:
+        log.warning("ComfyUI no respondió tras restart")
+    return up
+
+
+def ensure_wan_runtime_ready() -> bool:
+    global _comfy_nodes_cache
+    if not WAN_WRAPPER_DIR.exists():
+        log.warning("Wan wrapper no encontrado en %s", WAN_WRAPPER_DIR)
+        return False
+    if not port_open(COMFY_PORT):
+        log.warning("ComfyUI no está activo; no se puede verificar Wan")
+        return False
+
+    _comfy_nodes_cache = None
+    missing = check_comfy_nodes(WAN_REQUIRED_NODES)
+    if not missing:
+        log.info("Wan runtime OK (nodos cargados)")
+        return True
+
+    log.warning("Faltan nodos Wan al boot: %s", ", ".join(missing))
+    log.info("Reiniciando ComfyUI para recargar custom nodes...")
+    if not comfy_restart(wait_timeout=60.0):
+        return False
+
+    _comfy_nodes_cache = None
+    missing_after = check_comfy_nodes(WAN_REQUIRED_NODES)
+    if missing_after:
+        log.warning(
+            "Wan sigue incompleto tras restart: %s. Revisa dependencias/imports del wrapper.",
+            ", ".join(missing_after),
+        )
+        return False
+
+    log.info("Wan runtime OK tras restart")
+    return True
 
 
 def voice_start():
@@ -595,6 +654,12 @@ def autostart():
             log.info("ComfyUI UP")
         else:
             log.warning("ComfyUI no respondió en 30s")
+    else:
+        log.info("ComfyUI ya estaba UP")
+
+    # Bootstrap Wan en el arranque de la landing: valida que los nodos estén cargados.
+    ensure_wan_runtime_ready()
+
     if not port_open(VOICE_PORT):
         log.info("Voice UI DOWN — arrancando...")
         voice_start()
