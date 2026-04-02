@@ -322,9 +322,16 @@ button:hover{background:#264880}
       </select></div>
     </div>
   </div>
-  <button type="submit">🎬 Generar vídeo</button>
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+        <button type="submit">🎬 Generar vídeo</button>
+        <a class="btn" href="http://localhost:8188/queue" target="_blank" rel="noopener noreferrer">📋 Abrir cola ComfyUI</a>
+    </div>
 </form>
+{% if server_result %}
+<div id="result" class="result {{ 'ok' if server_result_ok else 'err' }}">{{ server_result }}</div>
+{% else %}
 <div id="result" class="result" style="display:none"></div>
+{% endif %}
 </div>
 <script>
 const profiles={{smooth_profiles_json}};
@@ -338,7 +345,11 @@ async function handleVideoSubmit(e){
   r.style.display='block';r.className='result';r.textContent='Enviando a ComfyUI...';
   const fd=new FormData(e.target);
   try{
-    const resp=await fetch('/tools/video-scene',{method:'POST',body:new URLSearchParams(fd)});
+        const resp=await fetch('/tools/video-scene',{
+            method:'POST',
+            headers:{'X-Requested-With':'XMLHttpRequest'},
+            body:new URLSearchParams(fd)
+        });
     const data=await resp.json();r.className='result '+(data.ok?'ok':'err');
         let msg=data.message||'';
     if(data.prompt_id)msg+='\\nPrompt ID: '+data.prompt_id;
@@ -417,10 +428,15 @@ button:hover{background:#264880}button.sec{background:#1a2540;border-color:#2a35
   </div>
   <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
     <button type="submit">🎞️ Generar vídeo</button>
+        <a class="btn" href="http://localhost:8188/queue" target="_blank" rel="noopener noreferrer">📋 Abrir cola ComfyUI</a>
     <button type="button" class="sec" onclick="exportWf()">📤 Exportar workflow JSON</button>
   </div>
 </form>
+{% if server_result %}
+<div id="result" class="result {{ 'ok' if server_result_ok else 'err' }}">{{ server_result }}</div>
+{% else %}
 <div id="result" class="result" style="display:none"></div>
+{% endif %}
 </div>
 <script>
 const profiles={{video_profiles_json}};
@@ -434,7 +450,11 @@ async function handleWanSubmit(e){
   r.style.display='block';r.className='result';r.textContent='Enviando a ComfyUI...';
   const fd=new FormData(e.target);
   try{
-    const resp=await fetch('/tools/wan-video',{method:'POST',body:new URLSearchParams(fd)});
+        const resp=await fetch('/tools/wan-video',{
+            method:'POST',
+            headers:{'X-Requested-With':'XMLHttpRequest'},
+            body:new URLSearchParams(fd)
+        });
     const data=await resp.json();r.className='result '+(data.ok?'ok':'err');
         let msg=data.message||'';
     if(data.prompt_id)msg+='\\nPrompt ID: '+data.prompt_id;
@@ -1517,24 +1537,54 @@ def api_status():
 @app.route("/tools/video-scene", methods=["GET", "POST"])
 def video_scene():
     if request.method == "POST":
-        return jsonify(submit_video_scene(request.form.to_dict()))
+        result = submit_video_scene(request.form.to_dict())
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify(result)
+        form = default_video_form()
+        form.update(request.form.to_dict())
+        return render_template_string(
+            VIDEO_TOOL_HTML,
+            form=form,
+            model_presets=VIDEO_MODEL_PRESETS,
+            smooth_profiles=VIDEO_SMOOTH_PROFILES,
+            smooth_profiles_json=json.dumps(VIDEO_SMOOTH_PROFILES),
+            server_result=json.dumps(result, ensure_ascii=False, indent=2),
+            server_result_ok=bool(result.get("ok")),
+        )
     form = default_video_form()
     return render_template_string(VIDEO_TOOL_HTML,
         form=form, model_presets=VIDEO_MODEL_PRESETS,
         smooth_profiles=VIDEO_SMOOTH_PROFILES,
         smooth_profiles_json=json.dumps(VIDEO_SMOOTH_PROFILES),
+        server_result=None,
+        server_result_ok=False,
     )
 
 
 @app.route("/tools/wan-video", methods=["GET", "POST"])
 def wan_video():
     if request.method == "POST":
-        return jsonify(submit_wan_scene(request.form.to_dict()))
+        result = submit_wan_scene(request.form.to_dict())
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify(result)
+        form = default_wan_form()
+        form.update(request.form.to_dict())
+        return render_template_string(
+            WAN_TOOL_HTML,
+            form=form,
+            model_presets=WAN_MODEL_PRESETS,
+            video_profiles=WAN_VIDEO_PROFILES,
+            video_profiles_json=json.dumps(WAN_VIDEO_PROFILES),
+            server_result=json.dumps(result, ensure_ascii=False, indent=2),
+            server_result_ok=bool(result.get("ok")),
+        )
     form = default_wan_form()
     return render_template_string(WAN_TOOL_HTML,
         form=form, model_presets=WAN_MODEL_PRESETS,
         video_profiles=WAN_VIDEO_PROFILES,
         video_profiles_json=json.dumps(WAN_VIDEO_PROFILES),
+        server_result=None,
+        server_result_ok=False,
     )
 
 
