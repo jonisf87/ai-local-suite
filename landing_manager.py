@@ -1039,7 +1039,7 @@ def patch_api_workflow(workflow, positive, negative, checkpoint,
                 wf[neg_nid]["inputs"]["text"] = negative
         node["inputs"].update({"steps": steps, "cfg": cfg, "seed": seed, "denoise": denoise})
 
-    patch_node("EmptyLatentImage", {"width": width, "height": height, "batch_size": 1})
+    patch_node("EmptyLatentImage", {"width": width, "height": height, "batch_size": frames})
     for ct in ("ADE_AnimateDiffLoaderWithContext", "ADE_AnimateDiffLoaderGen1"):
         patch_node(ct, {"context_length": frames})
     patch_node("VHS_VideoCombine", {
@@ -1149,7 +1149,7 @@ def build_video_prompt(checkpoint, motion_model, beta_schedule, positive, negati
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": checkpoint}},
         "2": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["1", 1]}},
         "3": {"class_type": "CLIPTextEncode", "inputs": {"text": negative, "clip": ["1", 1]}},
-        "4": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
+        "4": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": frames}},
         "5": {"class_type": "ADE_AnimateDiffLoaderWithContext", "inputs": {
             "model": ["1", 0],
             "model_name": motion_model,
