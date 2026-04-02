@@ -60,6 +60,7 @@ VOICE_CMD = f"{AI_DIR}/venv/bin/python {VOICE_SCRIPT}"
 VOICE_PORT = 7862
 WAN_WRAPPER_DIR = COMFY_DIR / "custom_nodes" / "ComfyUI-WanVideoWrapper"
 OLLAMA_MODELFILES_DIR = AI_DIR / "modelfiles"
+CHARACTER_PROFILES_DIR = AI_DIR / "adult_chatbot_manga" / "characters"
 
 WAN_REQUIRED_NODES = [
     "WanVideoModelLoader",
@@ -372,6 +373,10 @@ button:hover,a.btn:hover{background:linear-gradient(180deg,#1d4b88 0%,#15345f 10
     </div>
   </div>
   <div class="section"><div class="section-title">Prompt</div>
+        <label>Perfil de personaje</label><select id="video_character_preset" name="character_preset" onchange="applyCharacterPrompt(this, 'vf')">
+            <option value="">Manual (sin perfil)</option>
+            {% for p in character_prompt_presets %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+        </select>
     <label>Prompt positivo</label><textarea name="positive_prompt">{{ form.positive_prompt }}</textarea>
     <label>Prompt negativo</label><textarea name="negative_prompt" style="height:60px">{{ form.negative_prompt }}</textarea>
   </div>
@@ -408,11 +413,47 @@ button:hover,a.btn:hover{background:linear-gradient(180deg,#1d4b88 0%,#15345f 10
 {% endif %}
 </div>
 <script>
-const profiles={{smooth_profiles_json}};
+const profiles={{smooth_profiles_json|safe}};
 function applyProfile(sel){
   const p=profiles.find(x=>x.id===sel.value);if(!p)return;
   const f=document.getElementById('vf');
   ['width','height','frames','fps','steps','cfg','denoise','crf'].forEach(k=>{if(f[k]&&p[k]!==undefined)f[k].value=p[k];});
+}
+async function applyCharacterPrompt(sel, formId){
+    const id=sel.value;
+    const f=document.getElementById(formId);if(!f)return;
+    const pos=f.querySelector('[name="positive_prompt"]');
+    const neg=f.querySelector('[name="negative_prompt"]');
+        const r=document.getElementById('result');
+    if(!id){
+        if(pos) pos.value='';
+        if(neg) neg.value='';
+                if(r){
+                    r.style.display='block';
+                    r.className='result ok';
+                    r.textContent='Perfil manual: prompts limpiados.';
+                }
+        return;
+    }
+    try{
+        const resp=await fetch('/tools/character-video-prompt/'+encodeURIComponent(id));
+        const data=await resp.json();
+        if(!data.ok)return;
+        if(pos && data.positive_prompt) pos.value=data.positive_prompt;
+        if(neg && data.negative_prompt) neg.value=data.negative_prompt;
+                if(r){
+                    r.style.display='block';
+                    r.className='result ok';
+                    r.textContent='Perfil cargado: '+(data.name||id)+'\\nPrompt+ y Prompt- actualizados.';
+                }
+    }catch(_err){
+                if(r){
+                    r.style.display='block';
+                    r.className='result err';
+                    r.textContent='Error cargando perfil '+id+'. Revisa /tmp/landing-trace.log';
+                }
+        // El fallback de backend al enviar mantiene funcionalidad incluso si falla la UI.
+    }
 }
 async function handleVideoSubmit(e){
   e.preventDefault();const r=document.getElementById('result');
@@ -480,6 +521,10 @@ button.sec{background:linear-gradient(180deg,#2a2056 0%,#20193f 100%);border-col
     </div>
   </div>
   <div class="section"><div class="section-title">Prompt</div>
+        <label>Perfil de personaje</label><select id="wan_character_preset" name="character_preset" onchange="applyCharacterPrompt(this, 'wf')">
+            <option value="">Manual (sin perfil)</option>
+            {% for p in character_prompt_presets %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+        </select>
     <label>Prompt positivo</label><textarea name="positive_prompt">{{ form.positive_prompt }}</textarea>
     <label>Prompt negativo</label><textarea name="negative_prompt" style="height:60px">{{ form.negative_prompt }}</textarea>
   </div>
@@ -517,11 +562,47 @@ button.sec{background:linear-gradient(180deg,#2a2056 0%,#20193f 100%);border-col
 {% endif %}
 </div>
 <script>
-const profiles={{video_profiles_json}};
+const profiles={{video_profiles_json|safe}};
 function applyProfile(sel){
   const p=profiles.find(x=>x.id===sel.value);if(!p)return;
   const f=document.getElementById('wf');
   ['width','height','frames','fps','steps','cfg','shift','crf'].forEach(k=>{if(f[k]&&p[k]!==undefined)f[k].value=p[k];});
+}
+async function applyCharacterPrompt(sel, formId){
+    const id=sel.value;
+    const f=document.getElementById(formId);if(!f)return;
+    const pos=f.querySelector('[name="positive_prompt"]');
+    const neg=f.querySelector('[name="negative_prompt"]');
+        const r=document.getElementById('result');
+    if(!id){
+        if(pos) pos.value='';
+        if(neg) neg.value='';
+                if(r){
+                    r.style.display='block';
+                    r.className='result ok';
+                    r.textContent='Perfil manual: prompts limpiados.';
+                }
+        return;
+    }
+    try{
+        const resp=await fetch('/tools/character-video-prompt/'+encodeURIComponent(id));
+        const data=await resp.json();
+        if(!data.ok)return;
+        if(pos && data.positive_prompt) pos.value=data.positive_prompt;
+        if(neg && data.negative_prompt) neg.value=data.negative_prompt;
+                if(r){
+                    r.style.display='block';
+                    r.className='result ok';
+                    r.textContent='Perfil cargado: '+(data.name||id)+'\\nPrompt+ y Prompt- actualizados.';
+                }
+    }catch(_err){
+                if(r){
+                    r.style.display='block';
+                    r.className='result err';
+                    r.textContent='Error cargando perfil '+id+'. Revisa /tmp/landing-trace.log';
+                }
+        // El fallback de backend al enviar mantiene funcionalidad incluso si falla la UI.
+    }
 }
 async function handleWanSubmit(e){
   e.preventDefault();const r=document.getElementById('result');
@@ -1124,6 +1205,129 @@ def load_ollama_prompt_presets():
     return presets
 
 
+def _extract_character_name(raw: str, fallback: str) -> str:
+    m = re.search(r"^#\s*Character\s+AI\s+Prompt\s*:\s*(.+?)\s*$", raw, flags=re.MULTILINE | re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    return fallback.replace("_", " ").replace("-", " ").title()
+
+
+def load_character_prompt_presets():
+    presets = []
+    root = CHARACTER_PROFILES_DIR
+    if not root.exists() or not root.is_dir():
+        return presets
+
+    for p in sorted(root.iterdir()):
+        if not p.is_dir():
+            continue
+        profile_md = p / "profile.md"
+        stable_prompt = p / "stable_diffusion_prompt.txt"
+
+        raw = ""
+        if profile_md.exists() and profile_md.is_file():
+            try:
+                raw = profile_md.read_text(encoding="utf-8").strip()
+            except Exception:
+                raw = ""
+
+        # Fallback por si profile.md está vacío o ausente.
+        if not raw and stable_prompt.exists() and stable_prompt.is_file():
+            try:
+                raw = stable_prompt.read_text(encoding="utf-8").strip()
+            except Exception:
+                raw = ""
+
+        if not raw:
+            continue
+
+        presets.append(
+            {
+                "id": p.name,
+                "name": _extract_character_name(raw, p.name),
+                "system_prompt": raw,
+            }
+        )
+
+    return presets
+
+
+def load_character_video_prompt_presets():
+    presets = []
+    root = CHARACTER_PROFILES_DIR
+    if not root.exists() or not root.is_dir():
+        return presets
+
+    for p in sorted(root.iterdir()):
+        if not p.is_dir():
+            continue
+
+        profile_md = p / "profile.md"
+        stable_prompt = p / "stable_diffusion_prompt.txt"
+
+        prompt_text = ""
+        if stable_prompt.exists() and stable_prompt.is_file():
+            try:
+                prompt_text = stable_prompt.read_text(encoding="utf-8").strip()
+            except Exception:
+                prompt_text = ""
+
+        if not prompt_text and profile_md.exists() and profile_md.is_file():
+            try:
+                prompt_text = profile_md.read_text(encoding="utf-8").strip()
+            except Exception:
+                prompt_text = ""
+
+        if not prompt_text:
+            continue
+
+        name_source = ""
+        if profile_md.exists() and profile_md.is_file():
+            try:
+                name_source = profile_md.read_text(encoding="utf-8")
+            except Exception:
+                name_source = ""
+
+        positive_prompt = prompt_text
+        negative_prompt = ""
+
+        m_pos = re.search(
+            r"POSITIVE\s+PROMPT\s*:\s*[-=\s]*\n(.*?)(?:\n\s*NEGATIVE\s+PROMPT(?:\s*\([^)]*\))?\s*:|\Z)",
+            prompt_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if m_pos:
+            positive_prompt = m_pos.group(1).strip()
+
+        m_neg = re.search(
+            r"NEGATIVE\s+PROMPT(?:\s*\([^)]*\))?\s*:\s*[-=\s]*\n(.*)$",
+            prompt_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if m_neg:
+            negative_prompt = m_neg.group(1).strip()
+
+        presets.append(
+            {
+                "id": p.name,
+                "name": _extract_character_name(name_source or prompt_text, p.name),
+                "positive_prompt": positive_prompt,
+                "negative_prompt": negative_prompt,
+            }
+        )
+
+    return presets
+
+
+def get_character_video_prompt_preset(preset_id: str):
+    if not preset_id:
+        return None
+    for p in load_character_video_prompt_presets():
+        if p.get("id") == preset_id:
+            return p
+    return None
+
+
 # --- WORKFLOWS ----------------------------------------------------------------
 def patch_api_workflow(
     workflow,
@@ -1381,6 +1585,12 @@ def build_video_prompt(
 
 
 def submit_video_scene(form_data):
+    log.info(
+        "video-scene submit: character_preset=%s positive_len=%s negative_len=%s",
+        form_data.get("character_preset", ""),
+        len((form_data.get("positive_prompt", "") or "").strip()),
+        len((form_data.get("negative_prompt", "") or "").strip()),
+    )
     if not port_open(COMFY_PORT):
         comfy_start()
         for _ in range(20):
@@ -1404,8 +1614,23 @@ def submit_video_scene(form_data):
     pix_fmt = form_data.get("pix_fmt", "yuv420p")
     seed_raw = int(form_data.get("seed", -1))
     seed = random.randint(0, 2**31) if seed_raw < 0 else seed_raw
+    character_preset_id = form_data.get("character_preset", "").strip()
     positive = form_data.get("positive_prompt", "").strip()
     negative = form_data.get("negative_prompt", "").strip()
+
+    if character_preset_id:
+        cp = get_character_video_prompt_preset(character_preset_id)
+        if cp:
+            if not positive:
+                positive = (cp.get("positive_prompt") or "").strip()
+            if not negative:
+                negative = (cp.get("negative_prompt") or "").strip()
+            log.info(
+                "video-scene fallback applied: character_preset=%s positive_len=%s negative_len=%s",
+                character_preset_id,
+                len(positive),
+                len(negative),
+            )
 
     if not positive:
         return {"ok": False, "message": "El prompt positivo no puede estar vacío."}
@@ -1705,6 +1930,12 @@ def build_wan_prompt(
 
 
 def submit_wan_scene(form_data):
+    log.info(
+        "wan-video submit: character_preset=%s positive_len=%s negative_len=%s",
+        form_data.get("character_preset", ""),
+        len((form_data.get("positive_prompt", "") or "").strip()),
+        len((form_data.get("negative_prompt", "") or "").strip()),
+    )
     if not port_open(COMFY_PORT):
         comfy_start()
         for _ in range(20):
@@ -1729,8 +1960,23 @@ def submit_wan_scene(form_data):
         else "yuv420p"
     )
     seed = max(0, int(form_data["seed"]))
+    character_preset_id = form_data.get("character_preset", "").strip()
     positive = form_data["positive_prompt"].strip()
     negative = form_data["negative_prompt"].strip()
+
+    if character_preset_id:
+        cp = get_character_video_prompt_preset(character_preset_id)
+        if cp:
+            if not positive:
+                positive = (cp.get("positive_prompt") or "").strip()
+            if not negative:
+                negative = (cp.get("negative_prompt") or "").strip()
+            log.info(
+                "wan-video fallback applied: character_preset=%s positive_len=%s negative_len=%s",
+                character_preset_id,
+                len(positive),
+                len(negative),
+            )
 
     if not positive:
         return {"ok": False, "message": "El prompt positivo no puede estar vacío."}
@@ -1939,6 +2185,7 @@ def api_status():
 
 @app.route("/tools/video-scene", methods=["GET", "POST"])
 def video_scene():
+    character_presets = load_character_video_prompt_presets()
     if request.method == "POST":
         result = submit_video_scene(request.form.to_dict())
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -1951,6 +2198,10 @@ def video_scene():
             model_presets=VIDEO_MODEL_PRESETS,
             smooth_profiles=VIDEO_SMOOTH_PROFILES,
             smooth_profiles_json=json.dumps(VIDEO_SMOOTH_PROFILES),
+            character_prompt_presets=character_presets,
+            character_prompt_presets_json=json.dumps(
+                character_presets, ensure_ascii=False
+            ),
             server_result=json.dumps(result, ensure_ascii=False, indent=2),
             server_result_ok=bool(result.get("ok")),
         )
@@ -1961,6 +2212,8 @@ def video_scene():
         model_presets=VIDEO_MODEL_PRESETS,
         smooth_profiles=VIDEO_SMOOTH_PROFILES,
         smooth_profiles_json=json.dumps(VIDEO_SMOOTH_PROFILES),
+        character_prompt_presets=character_presets,
+        character_prompt_presets_json=json.dumps(character_presets, ensure_ascii=False),
         server_result=None,
         server_result_ok=False,
     )
@@ -1968,6 +2221,7 @@ def video_scene():
 
 @app.route("/tools/wan-video", methods=["GET", "POST"])
 def wan_video():
+    character_presets = load_character_video_prompt_presets()
     if request.method == "POST":
         result = submit_wan_scene(request.form.to_dict())
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -1980,6 +2234,10 @@ def wan_video():
             model_presets=WAN_MODEL_PRESETS,
             video_profiles=WAN_VIDEO_PROFILES,
             video_profiles_json=json.dumps(WAN_VIDEO_PROFILES),
+            character_prompt_presets=character_presets,
+            character_prompt_presets_json=json.dumps(
+                character_presets, ensure_ascii=False
+            ),
             server_result=json.dumps(result, ensure_ascii=False, indent=2),
             server_result_ok=bool(result.get("ok")),
         )
@@ -1990,6 +2248,8 @@ def wan_video():
         model_presets=WAN_MODEL_PRESETS,
         video_profiles=WAN_VIDEO_PROFILES,
         video_profiles_json=json.dumps(WAN_VIDEO_PROFILES),
+        character_prompt_presets=character_presets,
+        character_prompt_presets_json=json.dumps(character_presets, ensure_ascii=False),
         server_result=None,
         server_result_ok=False,
     )
@@ -1998,6 +2258,29 @@ def wan_video():
 @app.route("/tools/wan-video/export", methods=["POST"])
 def wan_video_export():
     return jsonify(export_wan_workflow(request.form.to_dict()))
+
+
+@app.route("/tools/character-video-prompt/<preset_id>", methods=["GET"])
+def character_video_prompt(preset_id):
+    preset = get_character_video_prompt_preset(preset_id)
+    if not preset:
+        log.warning("character-video-prompt not found: %s", preset_id)
+        return jsonify({"ok": False, "message": "Perfil no encontrado."}), 404
+    log.info(
+        "character-video-prompt loaded: %s positive_len=%s negative_len=%s",
+        preset_id,
+        len((preset.get("positive_prompt") or "").strip()),
+        len((preset.get("negative_prompt") or "").strip()),
+    )
+    return jsonify(
+        {
+            "ok": True,
+            "id": preset.get("id", ""),
+            "name": preset.get("name", ""),
+            "positive_prompt": preset.get("positive_prompt", ""),
+            "negative_prompt": preset.get("negative_prompt", ""),
+        }
+    )
 
 
 @app.route("/tools/ollama-models", methods=["GET"])
