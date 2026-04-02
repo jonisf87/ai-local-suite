@@ -149,7 +149,7 @@ WAN_MODEL_PRESETS = [
     {
         "id": "wan_1b",
         "name": "Wan2.1 T2V 1.3B (rápido)",
-        "model": "Fun/Lumen/Wan2_1_Lumen-T2V-1.3B-V1.0_bf16.safetensors",
+        "model": "Wan2_1-T2V-1_3B_bf16.safetensors",
         "text_encoder": "umt5-xxl-enc-bf16.safetensors",
         "vae": "Wan2_1_VAE_bf16.safetensors",
     },
@@ -1243,12 +1243,6 @@ def resolve_checkpoint_name(obj_info: dict, preset: dict) -> str:
     if not ckpt_options:
         return preset["checkpoint"]
 
-    include_token = preset.get("include_token", "").lower()
-    if include_token:
-        for ck in ckpt_options:
-            if include_token in ck.lower():
-                return ck
-
     wanted = preset.get("checkpoint", "")
     if wanted in ckpt_options:
         return wanted
@@ -1256,6 +1250,12 @@ def resolve_checkpoint_name(obj_info: dict, preset: dict) -> str:
     for ck in ckpt_options:
         if ck.lower() == wanted_lower:
             return ck
+
+    include_token = preset.get("include_token", "").lower()
+    if include_token:
+        for ck in ckpt_options:
+            if include_token in ck.lower():
+                return ck
 
     return ckpt_options[0]
 
@@ -1533,6 +1533,46 @@ def get_wan_profile(profile_id):
     return WAN_VIDEO_PROFILES[0]
 
 
+def _resolve_comfy_option(obj_info: dict, node: str, key: str, wanted: str) -> str:
+    options = get_node_input_options(obj_info, node, key)
+    if not options:
+        return wanted
+    if wanted in options:
+        return wanted
+    wanted_lower = wanted.lower()
+    for opt in options:
+        if opt.lower() == wanted_lower:
+            return opt
+    return options[0]
+
+
+def resolve_wan_model_name(obj_info: dict, preset: dict) -> str:
+    options = get_node_input_options(obj_info, "WanVideoModelLoader", "model")
+    wanted = preset.get("model", "")
+    if not options:
+        return wanted
+
+    # Preferimos modelo T2V 1.3B base (no Lumen/Fun) para evitar mismatch de canales.
+    for opt in options:
+        low = opt.lower()
+        if "t2v" in low and "1_3b" in low and "lumen" not in low and "fun/" not in low:
+            return opt
+
+    if wanted in options:
+        return wanted
+    wanted_lower = wanted.lower()
+    for opt in options:
+        if opt.lower() == wanted_lower:
+            return opt
+
+    for opt in options:
+        low = opt.lower()
+        if "lumen" not in low and "fun/" not in low:
+            return opt
+
+    return options[0]
+
+
 def default_wan_form():
     profile = WAN_VIDEO_PROFILES[0]
     return {
@@ -1717,6 +1757,21 @@ def submit_wan_scene(form_data):
             ),
         }
 
+    obj_info = get_comfy_object_info()
+    wan_model = resolve_wan_model_name(obj_info, preset)
+    text_encoder = _resolve_comfy_option(
+        obj_info,
+        "LoadWanVideoT5TextEncoder",
+        "model_name",
+        preset["text_encoder"],
+    )
+    vae = _resolve_comfy_option(
+        obj_info,
+        "WanVideoVAELoader",
+        "model_name",
+        preset["vae"],
+    )
+
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     output_prefix = f"wan_output/{timestamp}_{slugify_text(positive)[:48]}"
 
@@ -1744,10 +1799,10 @@ def submit_wan_scene(form_data):
                         pix_fmt,
                         seed,
                         output_prefix,
-                        wan_model=preset["model"],
+                        wan_model=wan_model,
                         shift=shift,
-                        text_encoder=preset["text_encoder"],
-                        vae=preset["vae"],
+                        text_encoder=text_encoder,
+                        vae=vae,
                     )
                     workflow_file = name
                     break
@@ -1756,9 +1811,9 @@ def submit_wan_scene(form_data):
 
     if prompt is None:
         prompt = build_wan_prompt(
-            wan_model=preset["model"],
-            text_encoder=preset["text_encoder"],
-            vae=preset["vae"],
+            wan_model=wan_model,
+            text_encoder=text_encoder,
+            vae=vae,
             positive=positive,
             negative=negative,
             width=width,
@@ -1815,9 +1870,9 @@ def submit_wan_scene(form_data):
         "output_prefix": output_prefix,
         "workflow_mode": "external" if workflow_file else "built-in",
         "workflow_file": workflow_file,
-        "used_model": preset["model"],
-        "used_text_encoder": preset["text_encoder"],
-        "used_vae": preset["vae"],
+        "used_model": wan_model,
+        "used_text_encoder": text_encoder,
+        "used_vae": vae,
         "used_positive_prompt": positive,
     }
 
