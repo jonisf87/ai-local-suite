@@ -91,15 +91,15 @@ VIDEO_SMOOTH_PROFILES = [
 WAN_MODEL_PRESETS = [
     {
         "id": "wan_1b", "name": "Wan2.1 T2V 1.3B (rápido)",
-        "model": "Wan2_1-T2V-1.3B_fp8_e4m3fn.safetensors",
+        "model": "Fun/Lumen/Wan2_1_Lumen-T2V-1.3B-V1.0_bf16.safetensors",
         "text_encoder": "umt5-xxl-enc-bf16.safetensors",
-        "vae": "Wan2.1_VAE.safetensors",
+        "vae": "Wan2_1_VAE_bf16.safetensors",
     },
     {
         "id": "wan_14b", "name": "Wan2.1 T2V 14B (calidad)",
         "model": "Wan2_1-T2V-14B_fp8_e4m3fn.safetensors",
         "text_encoder": "umt5-xxl-enc-bf16.safetensors",
-        "vae": "Wan2.1_VAE.safetensors",
+        "vae": "Wan2_1_VAE_bf16.safetensors",
     },
 ]
 
