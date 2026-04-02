@@ -1580,4 +1580,4 @@ def svc_openwebui(action):
 if __name__ == "__main__":
     t = threading.Thread(target=autostart, daemon=True)
     t.start()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
