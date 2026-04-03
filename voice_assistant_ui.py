@@ -17,6 +17,60 @@ PIPER_CONFIG = os.environ.get("PIPER_CONFIG", "/home/jonathan/ai/piper/es_ES-mls
 WHISPER_DEVICE_DEFAULT = "cpu"  # puedes poner "cuda" si ya tienes cuDNN OK
 _whisper_cache = {}
 
+SPACE_INVADERS_CSS = """
+.gradio-container {
+    font-family: "VT323", "Press Start 2P", "Lucida Console", monospace !important;
+    background:
+        radial-gradient(1100px 700px at 20% -10%, #152241 0%, #06070d 55%),
+        radial-gradient(1000px 600px at 120% 120%, #101b32 0%, #06070d 60%) !important;
+    color: #d5ffe6 !important;
+}
+
+.gradio-container::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,.03) 0 1px, transparent 1px 4px);
+    mix-blend-mode: soft-light;
+    z-index: 0;
+}
+
+.gradio-container > * {
+    position: relative;
+    z-index: 1;
+}
+
+h1, h2, h3, label, .prose, .gr-markdown {
+    color: #d5ffe6 !important;
+    text-shadow: 0 0 8px rgba(62, 252, 154, .35);
+}
+
+.block, .gr-panel, .gr-box, .gr-form, .gr-accordion {
+    background: linear-gradient(160deg, #0d1220 0%, #090d18 100%) !important;
+    border: 2px solid #1f7eaf !important;
+    border-radius: 6px !important;
+    box-shadow: 0 0 0 1px rgba(62, 252, 154, .18) inset, 0 0 18px rgba(56, 168, 255, .12) !important;
+}
+
+input, textarea, select, .gr-textbox, .gr-dropdown, .gr-audio {
+    background: #081122 !important;
+    border: 1px solid #2a8fd6 !important;
+    color: #d5ffe6 !important;
+    box-shadow: 0 0 0 1px rgba(62, 252, 154, .12) inset !important;
+}
+
+button, .gr-button {
+    background: linear-gradient(180deg, #15345f 0%, #10233d 100%) !important;
+    border: 1px solid #2ea8ff !important;
+    color: #e5f4ff !important;
+}
+
+button:hover, .gr-button:hover {
+    background: linear-gradient(180deg, #1d4b88 0%, #15345f 100%) !important;
+}
+"""
+
 def get_whisper_model(size:str, device:str):
     key = (size, device)
     if key not in _whisper_cache:
@@ -104,7 +158,7 @@ def pipeline(mic_file, whisper_size, whisper_device, whisper_task, whisper_lang,
 
     return wav_path, user_text, assistant
 
-with gr.Blocks(title="Asistente de Voz Local") as ui:
+with gr.Blocks(title="Asistente de Voz Local", css=SPACE_INVADERS_CSS) as ui:
     gr.Markdown("# 🗣️ Asistente de Voz (Whisper + Ollama + Piper) — Offline")
     with gr.Row():
         with gr.Column():

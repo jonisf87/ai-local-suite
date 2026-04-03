@@ -18,6 +18,8 @@ Puertos por defecto:
 """
 
 import json
+import inspect
+import importlib
 import logging
 import os
 import random
@@ -29,7 +31,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib import request as urlrequest, error as urlerror
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, send_from_directory
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,6 +70,55 @@ ADULT_CHATBOT_CMD = (
 WAN_WRAPPER_DIR = COMFY_DIR / "custom_nodes" / "ComfyUI-WanVideoWrapper"
 OLLAMA_MODELFILES_DIR = AI_DIR / "modelfiles"
 CHARACTER_PROFILES_DIR = AI_DIR / "adult_chatbot_manga" / "characters"
+VOICE_OUT_DIR = AI_DIR / "voice_out"
+PIPER_MODEL_PATH = os.environ.get("PIPER_MODEL", str(AI_DIR / "piper" / "es_ES-mls_9972-low.onnx"))
+PIPER_CONFIG_PATH = os.environ.get("PIPER_CONFIG", f"{PIPER_MODEL_PATH}.json")
+XTTS_MODEL_NAME = os.environ.get("XTTS_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2")
+
+GAME_TTS_PERSONALITY_PRESETS = [
+    {
+        "id": "neutral_narrator",
+        "name": "Neutral Narrator",
+        "voice_id": "narrator",
+        "speed": 1.0,
+        "pitch": 1.0,
+        "energy": 1.0,
+        "emotion_tags": "neutral, clear",
+        "pauses": "medium",
+    },
+    {
+        "id": "hero_confident",
+        "name": "Hero Confident",
+        "voice_id": "hero",
+        "speed": 1.08,
+        "pitch": 1.03,
+        "energy": 1.15,
+        "emotion_tags": "confident, determined",
+        "pauses": "short",
+    },
+    {
+        "id": "villain_cold",
+        "name": "Villain Cold",
+        "voice_id": "villain",
+        "speed": 0.92,
+        "pitch": 0.95,
+        "energy": 0.95,
+        "emotion_tags": "cold, threatening",
+        "pauses": "long",
+    },
+    {
+        "id": "npc_friendly",
+        "name": "NPC Friendly",
+        "voice_id": "npc",
+        "speed": 1.04,
+        "pitch": 1.06,
+        "energy": 1.08,
+        "emotion_tags": "friendly, warm",
+        "pauses": "medium",
+    },
+]
+
+_xtts_model_cache = None
 
 WAN_REQUIRED_NODES = [
     "WanVideoModelLoader",
@@ -329,6 +380,11 @@ setInterval(pollStatus,5000);
     <div class="url" style="margin:4px 0 10px;opacity:.8">Text-to-video con Wan2.1 (ComfyUI-WanVideoWrapper)</div>
     <div class="btns"><a class="btn" href="/tools/wan-video">Abrir herramienta</a></div>
   </div>
+    <div class="tool-card">
+        <div class="name">🎮 Tool: Game TTS Personality</div>
+        <div class="url" style="margin:4px 0 10px;opacity:.8">Piper (rápido) + XTTS v2 (personajes expresivos)</div>
+        <div class="btns"><a class="btn" href="/tools/game-tts">Abrir herramienta</a></div>
+    </div>
     <div class="tool-card">
         <div class="name">🧠 Tool: Ollama Custom Models</div>
         <div class="url" style="margin:4px 0 10px;opacity:.8">Lista, descarga y crea modelos custom con Modelfile</div>
@@ -659,6 +715,139 @@ async function exportWf(){
   }catch(err){r.className='result err';r.textContent='Error: '+err;}
 }
 </script></body></html>
+"""
+
+# --- HTML GAME TTS TOOL -------------------------------------------------------
+GAME_TTS_HTML = """
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"><title>Game TTS Personality</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{color-scheme:dark}
+body{font-family:"VT323","Press Start 2P","Lucida Console",monospace;background:radial-gradient(980px 560px at 0% -20%,#10295a 0%,#06070d 62%);color:#d5ffe6;margin:0}
+.wrap{max-width:920px;margin:36px auto;padding:0 18px}
+h1{font-size:28px;margin:0 0 8px;text-shadow:0 0 8px rgba(62,252,154,.35)}
+.back{font-size:14px;opacity:.9;margin-bottom:18px}.back a{color:#78c7ff;text-decoration:none}
+.section{background:linear-gradient(160deg,#0b1326 0%,#09101f 100%);border:2px solid #1f79b5;border-radius:6px;padding:12px;margin-bottom:12px}
+.section-title{font-size:13px;font-weight:700;opacity:.95;text-transform:uppercase;letter-spacing:.08em;color:#8ec9ff;margin-bottom:8px}
+label{display:block;font-size:13px;opacity:.95;margin:10px 0 3px;color:#9fd0ff}
+input,textarea,select{width:100%;box-sizing:border-box;background:#081122;border:1px solid #2a8fd6;border-radius:4px;color:#d5ffe6;padding:9px 10px;font-size:16px;box-shadow:0 0 0 1px rgba(62,252,154,.12) inset}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#3efc9a;box-shadow:0 0 0 1px rgba(62,252,154,.4),0 0 12px rgba(62,252,154,.2)}
+textarea{height:180px;resize:vertical}
+.row{display:flex;gap:10px}.row>div{flex:1}
+button{margin-top:10px;background:linear-gradient(180deg,#15345f 0%,#10233d 100%);border:1px solid #2ea8ff;color:#e5f4ff;padding:10px 18px;border-radius:4px;font-size:15px;cursor:pointer}
+button:hover{background:linear-gradient(180deg,#1d4b88 0%,#15345f 100%)}
+.result{margin-top:14px;background:#091227;border:1px solid #2b87cf;border-radius:4px;padding:12px;font-size:15px;white-space:pre-wrap}
+.ok{color:#8effb8}.err{color:#ff9bbb}.note{font-size:12px;opacity:.85;margin-top:4px;color:#95cfff}
+audio{width:100%;margin-top:10px}
+.hint{font-size:12px;color:#9cc5ea;opacity:.9;margin-top:5px}
+</style></head><body><div class="wrap">
+<h1>🎮 Game TTS Personality</h1>
+<div class="back"><a href="/">← Volver al gestor</a></div>
+
+<form id="tts-form" onsubmit="return generateGameTTS(event)">
+    <div class="section"><div class="section-title">Motor y personaje</div>
+        <div class="row">
+            <div><label>Motor TTS</label><select name="engine" id="engine">
+                <option value="piper">Piper (rápido, local)</option>
+                <option value="xtts">XTTS v2 (personajes expresivos)</option>
+            </select></div>
+            <div><label>Personaje</label><select name="character_id" id="character_id" onchange="applyCharacterMeta()">
+                {% for c in characters %}<option value="{{ c.id }}" data-speaker="{{ c.speaker_wav }}">{{ c.name }}</option>{% endfor %}
+            </select></div>
+            <div><label>Idioma</label><select name="language" id="language">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+            </select></div>
+        </div>
+        <div id="speaker-hint" class="hint"></div>
+    </div>
+
+    <div class="section"><div class="section-title">Preset de personalidad</div>
+        <div class="row">
+            <div><label>Preset</label><select name="personality_id" id="personality_id" onchange="applyPreset()">
+                {% for p in personalities %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+            </select></div>
+            <div><label>voice_id</label><input type="text" name="voice_id" id="voice_id" readonly></div>
+        </div>
+        <div class="row">
+            <div><label>speed</label><input type="number" name="speed" id="speed" step="0.01" min="0.2" max="2.0"></div>
+            <div><label>pitch</label><input type="number" name="pitch" id="pitch" step="0.01" min="0.5" max="2.0"></div>
+            <div><label>energy</label><input type="number" name="energy" id="energy" step="0.01" min="0.5" max="2.0"></div>
+        </div>
+        <div class="row">
+            <div><label>emotion tags</label><input type="text" name="emotion_tags" id="emotion_tags"></div>
+            <div><label>pausas</label><select name="pauses" id="pauses">
+                <option value="short">short</option>
+                <option value="medium">medium</option>
+                <option value="long">long</option>
+            </select></div>
+        </div>
+        <div class="note">Piper usa speed. XTTS usa speaker WAV + speed (si la versión lo soporta). El resto de parámetros se conservan en preset para tu pipeline de juego.</div>
+    </div>
+
+    <div class="section"><div class="section-title">Texto</div>
+        <label>Texto de entrada</label>
+        <textarea name="text" id="text" placeholder="Escribe aquí el diálogo del personaje..."></textarea>
+        <button type="submit">🔊 Generar audio</button>
+    </div>
+</form>
+
+<div id="result" class="result" style="display:none"></div>
+<audio id="audio" controls style="display:none"></audio>
+<div id="saved" class="hint" style="display:none"></div>
+
+<script>
+const personalities={{personalities_json|safe}};
+function applyPreset(){
+    const id=document.getElementById('personality_id').value;
+    const p=personalities.find(x=>x.id===id);if(!p)return;
+    document.getElementById('voice_id').value=p.voice_id||'';
+    document.getElementById('speed').value=p.speed||1.0;
+    document.getElementById('pitch').value=p.pitch||1.0;
+    document.getElementById('energy').value=p.energy||1.0;
+    document.getElementById('emotion_tags').value=p.emotion_tags||'';
+    document.getElementById('pauses').value=p.pauses||'medium';
+}
+function applyCharacterMeta(){
+    const sel=document.getElementById('character_id');
+    const opt=sel.options[sel.selectedIndex];
+    const speaker=(opt&&opt.dataset&&opt.dataset.speaker)||'';
+    const hint=document.getElementById('speaker-hint');
+    hint.textContent=speaker?('speaker WAV: '+speaker):'speaker WAV: no detectado (necesario para XTTS)';
+}
+async function generateGameTTS(e){
+    e.preventDefault();
+    const res=document.getElementById('result');
+    const audio=document.getElementById('audio');
+    const saved=document.getElementById('saved');
+    res.style.display='block';res.className='result';res.textContent='Generando audio...';
+    audio.style.display='none';saved.style.display='none';
+    const fd=new FormData(document.getElementById('tts-form'));
+    try{
+        const resp=await fetch('/tools/game-tts/generate',{
+            method:'POST',
+            headers:{'X-Requested-With':'XMLHttpRequest'},
+            body:new URLSearchParams(fd)
+        });
+        const data=await resp.json();
+        res.className='result '+(data.ok?'ok':'err');
+        res.textContent=data.message||'';
+        if(data.ok&&data.audio_url){
+            audio.src=data.audio_url+'?t='+Date.now();
+            audio.style.display='block';
+            saved.style.display='block';
+            saved.textContent='Guardado en: '+(data.path||'');
+        }
+    }catch(err){
+        res.className='result err';res.textContent='Error: '+err;
+    }
+    return false;
+}
+applyPreset();
+applyCharacterMeta();
+</script>
+</div></body></html>
 """
 
 # --- HTML OLLAMA CUSTOM MODELS TOOL ------------------------------------------
@@ -1361,6 +1550,184 @@ def get_character_video_prompt_preset(preset_id: str):
         if p.get("id") == preset_id:
             return p
     return None
+
+
+def _find_character_reference_wav(char_dir: Path) -> str:
+    if not char_dir.exists() or not char_dir.is_dir():
+        return ""
+    candidates = [
+        char_dir / "voice.wav",
+        char_dir / "reference.wav",
+        char_dir / "sample.wav",
+    ]
+    for p in candidates:
+        if p.exists() and p.is_file():
+            return str(p)
+    for p in sorted(char_dir.glob("*.wav")):
+        if p.is_file():
+            return str(p)
+    return ""
+
+
+def load_game_tts_character_presets():
+    presets = []
+    root = CHARACTER_PROFILES_DIR
+    if root.exists() and root.is_dir():
+        for p in sorted(root.iterdir()):
+            if not p.is_dir():
+                continue
+            presets.append(
+                {
+                    "id": p.name,
+                    "name": p.name.replace("_", " ").replace("-", " ").title(),
+                    "speaker_wav": _find_character_reference_wav(p),
+                }
+            )
+    if not presets:
+        presets = [
+            {"id": "hero", "name": "Hero", "speaker_wav": ""},
+            {"id": "villain", "name": "Villain", "speaker_wav": ""},
+            {"id": "narrator", "name": "Narrator", "speaker_wav": ""},
+        ]
+    return presets
+
+
+def get_game_tts_personality(preset_id: str):
+    for preset in GAME_TTS_PERSONALITY_PRESETS:
+        if preset.get("id") == preset_id:
+            return preset
+    return GAME_TTS_PERSONALITY_PRESETS[0]
+
+
+def _styled_tts_text(text: str, pauses: str = "medium") -> str:
+    t = (text or "").strip()
+    if not t:
+        return ""
+    if pauses == "long":
+        t = re.sub(r",\s*", ", ... ", t)
+        t = re.sub(r"\.\s*", ". ... ", t)
+    elif pauses == "short":
+        t = re.sub(r",\s*", ", ", t)
+        t = re.sub(r"\.\s*", ". ", t)
+    return t
+
+
+def _game_tts_filename(character_id: str, personality_id: str, text: str) -> str:
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    text_slug = slugify_text(text, max_len=24) or "line"
+    base = f"game_tts_{character_id}_{personality_id}_{ts}_{text_slug}.wav"
+    return slugify_text(base.replace(".wav", ""), max_len=110) + ".wav"
+
+
+def _get_xtts_model():
+    global _xtts_model_cache
+    if _xtts_model_cache is not None:
+        return _xtts_model_cache
+    try:
+        tts_module = importlib.import_module("TTS.api")
+        TTS = getattr(tts_module, "TTS")
+    except Exception as exc:
+        raise RuntimeError("XTTS no disponible. Instala con: pip install TTS") from exc
+
+    model = TTS(XTTS_MODEL_NAME)
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            model = model.to("cuda")
+    except Exception:
+        pass
+
+    _xtts_model_cache = model
+    return _xtts_model_cache
+
+
+def generate_game_tts(
+    engine: str,
+    character: dict,
+    personality: dict,
+    text: str,
+    language: str,
+):
+    ensure_dir(VOICE_OUT_DIR)
+
+    style_text = _styled_tts_text(text, pauses=personality.get("pauses", "medium"))
+    out_name = _game_tts_filename(
+        character.get("id", "character"), personality.get("id", "preset"), text
+    )
+    out_path = VOICE_OUT_DIR / out_name
+
+    speed = float(personality.get("speed", 1.0) or 1.0)
+
+    if engine == "piper":
+        model_path = Path(PIPER_MODEL_PATH)
+        if not model_path.exists():
+            return {
+                "ok": False,
+                "message": f"Modelo Piper no encontrado: {model_path}",
+            }
+        cmd = ["piper", "--model", str(model_path), "--output_file", str(out_path)]
+        cfg_path = Path(PIPER_CONFIG_PATH)
+        if cfg_path.exists():
+            cmd.extend(["--config", str(cfg_path)])
+
+        length_scale = 1.0 / max(0.2, speed)
+        cmd.extend(["--length_scale", f"{length_scale:.3f}"])
+
+        proc = subprocess.run(
+            cmd,
+            input=style_text,
+            text=True,
+            capture_output=True,
+        )
+        if proc.returncode != 0:
+            err = (proc.stderr or proc.stdout or "").strip()
+            return {
+                "ok": False,
+                "message": f"Error Piper: {err or 'fallo desconocido'}",
+            }
+
+    elif engine == "xtts":
+        speaker_wav = (character.get("speaker_wav") or "").strip()
+        if not speaker_wav or not Path(speaker_wav).exists():
+            return {
+                "ok": False,
+                "message": (
+                    "XTTS necesita una referencia de voz WAV por personaje. "
+                    "Añade voice.wav en la carpeta del personaje."
+                ),
+            }
+
+        try:
+            xtts = _get_xtts_model()
+            kwargs = {
+                "text": style_text,
+                "speaker_wav": speaker_wav,
+                "language": language,
+                "file_path": str(out_path),
+            }
+            sig = inspect.signature(xtts.tts_to_file)
+            if "speed" in sig.parameters:
+                kwargs["speed"] = speed
+            xtts.tts_to_file(**kwargs)
+        except Exception as exc:
+            return {
+                "ok": False,
+                "message": f"Error XTTS: {exc}",
+            }
+    else:
+        return {"ok": False, "message": f"Motor no soportado: {engine}"}
+
+    if not out_path.exists():
+        return {"ok": False, "message": "No se generó el audio de salida."}
+
+    return {
+        "ok": True,
+        "path": str(out_path),
+        "filename": out_name,
+        "audio_url": f"/tools/game-tts/audio/{out_name}",
+        "engine": engine,
+    }
 
 
 # --- WORKFLOWS ----------------------------------------------------------------
@@ -2214,6 +2581,71 @@ def export_wan_workflow(form_data):
         return {"ok": False, "message": str(exc)}
 
 
+def default_game_tts_form():
+    preset = GAME_TTS_PERSONALITY_PRESETS[0]
+    chars = load_game_tts_character_presets()
+    return {
+        "engine": "piper",
+        "character_id": chars[0]["id"] if chars else "hero",
+        "language": "es",
+        "personality_id": preset["id"],
+        "voice_id": preset["voice_id"],
+        "speed": preset["speed"],
+        "pitch": preset["pitch"],
+        "energy": preset["energy"],
+        "emotion_tags": preset["emotion_tags"],
+        "pauses": preset["pauses"],
+        "text": "",
+    }
+
+
+def submit_game_tts(form_data):
+    text = (form_data.get("text", "") or "").strip()
+    if not text:
+        return {"ok": False, "message": "Escribe un texto para generar audio."}
+
+    engine = (form_data.get("engine", "piper") or "piper").strip().lower()
+    language = (form_data.get("language", "es") or "es").strip().lower()
+    character_id = (form_data.get("character_id", "") or "").strip()
+    personality_id = (form_data.get("personality_id", "") or "").strip()
+
+    characters = load_game_tts_character_presets()
+    character = next((c for c in characters if c.get("id") == character_id), None)
+    if character is None:
+        character = characters[0] if characters else {"id": "hero", "name": "Hero", "speaker_wav": ""}
+
+    personality = dict(get_game_tts_personality(personality_id))
+    for key in ("voice_id", "emotion_tags", "pauses"):
+        if form_data.get(key) is not None:
+            personality[key] = str(form_data.get(key, "")).strip()
+    for key in ("speed", "pitch", "energy"):
+        if form_data.get(key) is not None:
+            try:
+                personality[key] = float(form_data.get(key))
+            except Exception:
+                pass
+
+    result = generate_game_tts(
+        engine=engine,
+        character=character,
+        personality=personality,
+        text=text,
+        language=language,
+    )
+    if not result.get("ok"):
+        return result
+
+    result["message"] = (
+        f"Audio generado con {engine.upper()} para {character.get('name', character.get('id', 'character'))}.\n"
+        f"Preset: {personality.get('id', 'custom')} | voice_id: {personality.get('voice_id', '')}\n"
+        f"speed={personality.get('speed', 1.0)} pitch={personality.get('pitch', 1.0)} energy={personality.get('energy', 1.0)}\n"
+        f"emotion_tags={personality.get('emotion_tags', '')} pauses={personality.get('pauses', 'medium')}"
+    )
+    result["personality"] = personality
+    result["character"] = character
+    return result
+
+
 # --- FLASK APP ----------------------------------------------------------------
 app = Flask(__name__)
 
@@ -2342,6 +2774,31 @@ def character_video_prompt(preset_id):
             "negative_prompt": preset.get("negative_prompt", ""),
         }
     )
+
+
+@app.route("/tools/game-tts", methods=["GET"])
+def game_tts_tool():
+    form = default_game_tts_form()
+    characters = load_game_tts_character_presets()
+    return render_template_string(
+        GAME_TTS_HTML,
+        form=form,
+        characters=characters,
+        personalities=GAME_TTS_PERSONALITY_PRESETS,
+        personalities_json=json.dumps(GAME_TTS_PERSONALITY_PRESETS, ensure_ascii=False),
+    )
+
+
+@app.route("/tools/game-tts/generate", methods=["POST"])
+def game_tts_generate():
+    result = submit_game_tts(request.form.to_dict())
+    return jsonify(result)
+
+
+@app.route("/tools/game-tts/audio/<path:filename>", methods=["GET"])
+def game_tts_audio(filename):
+    safe_name = Path(filename).name
+    return send_from_directory(VOICE_OUT_DIR, safe_name, as_attachment=False)
 
 
 @app.route("/tools/ollama-models", methods=["GET"])
