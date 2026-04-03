@@ -74,6 +74,7 @@ CHARACTER_PROFILES_DIR = AI_DIR / "adult_chatbot_manga" / "characters"
 VOICE_OUT_DIR = AI_DIR / "voice_out"
 PIPER_MODEL_PATH = os.environ.get("PIPER_MODEL", str(AI_DIR / "piper" / "es_ES-mls_9972-low.onnx"))
 PIPER_CONFIG_PATH = os.environ.get("PIPER_CONFIG", f"{PIPER_MODEL_PATH}.json")
+PIPER_BIN = os.environ.get("PIPER_BIN", str(AI_DIR / "venv" / "bin" / "piper"))
 XTTS_MODEL_NAME = os.environ.get("XTTS_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2")
 XTTS_PYTHON = os.environ.get("XTTS_PYTHON", str(AI_DIR / "venv_xtts311" / "bin" / "python"))
 
@@ -1810,13 +1811,23 @@ def generate_game_tts(
     speed = float(personality.get("speed", 1.0) or 1.0)
 
     if engine == "piper":
+        piper_bin = Path(PIPER_BIN)
+        if not piper_bin.exists():
+            return {
+                "ok": False,
+                "message": (
+                    "Piper CLI no encontrado en ruta esperada. "
+                    f"Configura PIPER_BIN (actual: {PIPER_BIN})"
+                ),
+            }
+
         model_path = Path((piper_model_path or "").strip() or PIPER_MODEL_PATH)
         if not model_path.exists():
             return {
                 "ok": False,
                 "message": f"Modelo Piper no encontrado: {model_path}",
             }
-        cmd = ["piper", "--model", str(model_path), "--output_file", str(out_path)]
+        cmd = [str(piper_bin), "--model", str(model_path), "--output_file", str(out_path)]
         cfg_path = Path(f"{model_path}.json")
         if not cfg_path.exists() and model_path == Path(PIPER_MODEL_PATH):
             cfg_path = Path(PIPER_CONFIG_PATH)
