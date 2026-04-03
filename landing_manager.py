@@ -187,7 +187,7 @@ VIDEO_SMOOTH_PROFILES = [
         "fps": 8,
         "steps": 20,
         "cfg": 7.0,
-        "denoise": 1.0,
+        "denoise": 0.7,
         "crf": 18,
         "pix_fmt": "yuv420p",
     },
@@ -201,7 +201,7 @@ VIDEO_SMOOTH_PROFILES = [
         "fps": 10,
         "steps": 20,
         "cfg": 7.0,
-        "denoise": 1.0,
+        "denoise": 0.7,
         "crf": 18,
         "pix_fmt": "yuv420p",
     },
@@ -383,6 +383,11 @@ setInterval(pollStatus,5000);
     <div class="url" style="margin:4px 0 10px;opacity:.8">Text-to-video con Wan2.1 (ComfyUI-WanVideoWrapper)</div>
     <div class="btns"><a class="btn" href="/tools/wan-video">Abrir herramienta</a></div>
   </div>
+    <div class="tool-card">
+        <div class="name">🖼️ Tool: Wan2.1 I2V Scene</div>
+        <div class="url" style="margin:4px 0 10px;opacity:.8">Image-to-video para escenas estables (menos efecto carrusel)</div>
+        <div class="btns"><a class="btn" href="/tools/wan-i2v">Abrir herramienta</a></div>
+    </div>
     <div class="tool-card">
         <div class="name">🎮 Tool: Game TTS Personality</div>
         <div class="url" style="margin:4px 0 10px;opacity:.8">Piper (rápido) + XTTS v2 (personajes expresivos)</div>
@@ -718,6 +723,162 @@ async function exportWf(){
   }catch(err){r.className='result err';r.textContent='Error: '+err;}
 }
 </script></body></html>
+"""
+
+# --- HTML WAN2.1 I2V TOOL ----------------------------------------------------
+WAN_I2V_TOOL_HTML = """
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"><title>Wan2.1 I2V — Escena desde imagen</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{color-scheme:dark}
+body{font-family:"VT323","Press Start 2P","Lucida Console",monospace;background:radial-gradient(950px 520px at 90% -20%,#1a2748 0%,#06070d 62%);color:#d5ffe6;margin:0}
+.wrap{max-width:860px;margin:36px auto;padding:0 18px}
+h1{font-size:28px;margin:0 0 8px;text-shadow:0 0 8px rgba(62,252,154,.35)}
+.back{font-size:14px;opacity:.9;margin-bottom:18px}.back a{color:#78c7ff;text-decoration:none}
+label{display:block;font-size:13px;opacity:.95;margin:10px 0 3px;color:#9fd0ff}
+input,textarea,select{width:100%;box-sizing:border-box;background:#081122;border:1px solid #2a8fd6;border-radius:4px;color:#d5ffe6;padding:9px 10px;font-size:16px;box-shadow:0 0 0 1px rgba(62,252,154,.12) inset}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#3efc9a;box-shadow:0 0 0 1px rgba(62,252,154,.4),0 0 12px rgba(62,252,154,.2)}
+textarea{height:96px;resize:vertical}.row{display:flex;gap:10px}.row>div{flex:1}
+button,a.btn{margin-top:8px;background:linear-gradient(180deg,#15345f 0%,#10233d 100%);border:1px solid #2ea8ff;color:#e5f4ff;padding:10px 18px;border-radius:4px;font-size:15px;cursor:pointer;text-decoration:none;display:inline-block}
+button:hover,a.btn:hover{background:linear-gradient(180deg,#1d4b88 0%,#15345f 100%)}
+.result{margin-top:16px;background:#091227;border:1px solid #2b87cf;border-radius:4px;padding:12px;font-size:15px;white-space:pre-wrap}
+.ok{color:#8effb8}.err{color:#ff9bbb}
+.section{background:linear-gradient(160deg,#0b1326 0%,#09101f 100%);border:2px solid #1f79b5;border-radius:6px;padding:12px;margin-bottom:12px}
+.section-title{font-size:13px;font-weight:700;opacity:.95;text-transform:uppercase;letter-spacing:.08em;color:#8ec9ff}
+.note{font-size:12px;opacity:.85;margin-top:6px;color:#95cfff}
+</style></head><body><div class="wrap">
+<h1>🖼️ Wan2.1 I2V — Escena desde imagen</h1>
+<div class="back"><a href="/">← Volver al gestor</a></div>
+<div class="note" style="margin-bottom:16px">Usa una imagen base estable en <code>ComfyUI/input</code> para reducir carrusel y flicker.</div>
+<form id="i2vf" method="post" onsubmit="return handleI2VSubmit(event)">
+    <div class="section"><div class="section-title">Imagen base y prompt</div>
+        <label>Imágenes detectadas en ComfyUI/input</label>
+        <div class="row">
+            <div style="flex:3">
+                <select id="image_name_select" onchange="syncImageName()">
+                    {% if input_images|length == 0 %}
+                    <option value="">(sin imágenes detectadas)</option>
+                    {% else %}
+                    {% for img in input_images %}<option value="{{ img }}" {% if img==form.image_name %}selected{% endif %}>{{ img }}</option>{% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            <div style="flex:1">
+                <button type="button" onclick="refreshInputImages()">Actualizar lista</button>
+            </div>
+        </div>
+        <label>Imagen base (nombre de archivo en ComfyUI/input)</label>
+        <input name="image_name" placeholder="ej: akika_base.png" value="{{ form.image_name }}">
+        <label>Prompt positivo</label><textarea name="positive_prompt">{{ form.positive_prompt }}</textarea>
+        <label>Prompt negativo</label><textarea name="negative_prompt" style="height:60px">{{ form.negative_prompt }}</textarea>
+    </div>
+    <div class="section"><div class="section-title">Modelo y parámetros</div>
+        <div class="row">
+            <div><label>Modelo</label><select name="model_preset">
+                {% for p in model_presets %}<option value="{{ p.id }}" {% if p.id==form.model_preset %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+            </select></div>
+            <div><label>Perfil de vídeo</label><select name="video_profile" onchange="applyProfile(this)">
+                {% for p in video_profiles %}<option value="{{ p.id }}" {% if p.id==form.video_profile %}selected{% endif %}>{{ p.name }} — {{ p.desc }}</option>{% endfor %}
+            </select></div>
+        </div>
+        <div class="row">
+            <div><label>Frames</label><input name="frames" type="number" min="8" max="121" value="{{ form.frames }}"></div>
+            <div><label>FPS</label><input name="fps" type="number" min="4" max="30" value="{{ form.fps }}"></div>
+            <div><label>Steps</label><input name="steps" type="number" min="10" max="50" value="{{ form.steps }}"></div>
+            <div><label>CFG</label><input name="cfg" type="number" min="1" max="15" step="0.5" value="{{ form.cfg }}"></div>
+        </div>
+        <div class="row">
+            <div><label>Shift</label><input name="shift" type="number" min="1.0" max="20.0" step="0.5" value="{{ form.shift }}"></div>
+            <div><label>Seed</label><input name="seed" type="number" value="{{ form.seed }}"></div>
+            <div><label>CRF</label><input name="crf" type="number" min="14" max="28" value="{{ form.crf }}"></div>
+            <div><label>Pixel format</label><select name="pix_fmt">
+                <option value="yuv420p" {% if form.pix_fmt=='yuv420p' %}selected{% endif %}>yuv420p</option>
+                <option value="yuv420p10le" {% if form.pix_fmt=='yuv420p10le' %}selected{% endif %}>yuv420p10le</option>
+            </select></div>
+        </div>
+    </div>
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+        <button type="submit">🎞️ Generar escena I2V</button>
+        <a class="btn" href="http://localhost:8188" target="_blank" rel="noopener noreferrer">📋 Abrir ComfyUI (cola)</a>
+    </div>
+</form>
+<div id="result" class="result" style="display:none"></div>
+<script>
+const profiles={{video_profiles_json|safe}};
+function syncImageName(){
+    const sel=document.getElementById('image_name_select');
+    const f=document.getElementById('i2vf');
+    if(!sel||!f||!f.image_name)return;
+    if(sel.value)f.image_name.value=sel.value;
+}
+async function refreshInputImages(){
+    const r=document.getElementById('result');
+    const sel=document.getElementById('image_name_select');
+    if(!sel)return;
+
+    const previous=sel.value;
+    if(r){
+        r.style.display='block';
+        r.className='result';
+        r.textContent='Refrescando imágenes de ComfyUI/input...';
+    }
+    try{
+        const resp=await fetch('/tools/wan-i2v/input-images');
+        const data=await resp.json();
+        sel.innerHTML='';
+        const images=Array.isArray(data.images)?data.images:[];
+        if(images.length===0){
+            const opt=document.createElement('option');
+            opt.value='';
+            opt.textContent='(sin imágenes detectadas)';
+            sel.appendChild(opt);
+        }else{
+            for(const img of images){
+                const opt=document.createElement('option');
+                opt.value=img;
+                opt.textContent=img;
+                sel.appendChild(opt);
+            }
+            const exists=images.includes(previous);
+            sel.value=exists?previous:images[0];
+        }
+        syncImageName();
+        if(r){
+            r.className='result ok';
+            r.textContent='Lista actualizada ('+images.length+' imágenes).';
+        }
+    }catch(err){
+        if(r){
+            r.className='result err';
+            r.textContent='Error refrescando lista: '+err;
+        }
+    }
+}
+function applyProfile(sel){
+    const p=profiles.find(x=>x.id===sel.value);if(!p)return;
+    const f=document.getElementById('i2vf');
+    ['frames','fps','steps','cfg','shift','crf'].forEach(k=>{if(f[k]&&p[k]!==undefined)f[k].value=p[k];});
+}
+async function handleI2VSubmit(e){
+    e.preventDefault();const r=document.getElementById('result');
+    r.style.display='block';r.className='result';r.textContent='Enviando I2V a ComfyUI...';
+    const fd=new FormData(e.target);
+    try{
+        const resp=await fetch('/tools/wan-i2v',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:new URLSearchParams(fd)});
+        const data=await resp.json();r.className='result '+(data.ok?'ok':'err');
+        let msg=data.message||'';
+        if(data.prompt_id)msg+='\\nPrompt ID: '+data.prompt_id;
+        if(data.output_prefix)msg+='\\nOutput: '+data.output_prefix;
+        if(data.workflow_file)msg+='\\nWorkflow file: '+data.workflow_file;
+        if(data.used_image)msg+='\\nImage: '+data.used_image;
+        if(data.ok)msg+='\\n→ ComfyUI: http://localhost:8188 (Queue en barra lateral)';
+        r.textContent=msg;
+    }catch(err){r.className='result err';r.textContent='Error: '+err;}
+    return false;
+}
+syncImageName();
+</script></div></body></html>
 """
 
 # --- HTML GAME TTS TOOL -------------------------------------------------------
@@ -2170,6 +2331,107 @@ def build_video_prompt(
     }
 
 
+def build_video_prompt_evolved(
+    checkpoint,
+    motion_model,
+    beta_schedule,
+    positive,
+    negative,
+    width,
+    height,
+    frames,
+    fps,
+    steps,
+    cfg,
+    denoise,
+    crf,
+    pix_fmt,
+    seed,
+    output_prefix,
+):
+    return {
+        "1": {
+            "class_type": "CheckpointLoaderSimple",
+            "inputs": {"ckpt_name": checkpoint},
+        },
+        "2": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {"text": positive, "clip": ["1", 1]},
+        },
+        "3": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {"text": negative, "clip": ["1", 1]},
+        },
+        "4": {
+            "class_type": "EmptyLatentImage",
+            "inputs": {"width": width, "height": height, "batch_size": frames},
+        },
+        "5": {
+            "class_type": "ADE_LoadAnimateDiffModel",
+            "inputs": {"model_name": motion_model, "ad_settings": None},
+        },
+        "6": {
+            "class_type": "ADE_ApplyAnimateDiffModelSimple",
+            "inputs": {
+                "motion_model": ["5", 0],
+                "motion_lora": None,
+                "scale_multival": None,
+                "effect_multival": None,
+                "ad_keyframes": None,
+                "per_block": None,
+            },
+        },
+        "7": {
+            "class_type": "ADE_UseEvolvedSampling",
+            "inputs": {
+                "model": ["1", 0],
+                "m_models": ["6", 0],
+                "context_options": None,
+                "sample_settings": None,
+                "beta_schedule": beta_schedule,
+            },
+        },
+        "8": {
+            "class_type": "KSampler",
+            "inputs": {
+                "model": ["7", 0],
+                "positive": ["2", 0],
+                "negative": ["3", 0],
+                "latent_image": ["4", 0],
+                "seed": seed,
+                "steps": steps,
+                "cfg": cfg,
+                "sampler_name": "dpmpp_2m",
+                "scheduler": "karras",
+                "denoise": denoise,
+            },
+        },
+        "9": {
+            "class_type": "VAEDecode",
+            "inputs": {"samples": ["8", 0], "vae": ["1", 2]},
+        },
+        "10": {
+            "class_type": "VHS_VideoCombine",
+            "inputs": {
+                "images": ["9", 0],
+                "audio": None,
+                "meta_batch": None,
+                "vae": None,
+                "frame_rate": fps,
+                "loop_count": 0,
+                "filename_prefix": output_prefix,
+                "format": "video/h264-mp4",
+                "pix_fmt": pix_fmt,
+                "crf": crf,
+                "save_metadata": True,
+                "trim_to_audio": False,
+                "pingpong": False,
+                "save_output": True,
+            },
+        },
+    }
+
+
 def submit_video_scene(form_data):
     log.info(
         "video-scene submit: character_preset=%s positive_len=%s negative_len=%s",
@@ -2244,6 +2506,16 @@ def submit_video_scene(form_data):
 
     workflow_file = None
     prompt = None
+    workflow_variant = "legacy"
+
+    has_evolved = all(
+        n in obj_info
+        for n in (
+            "ADE_LoadAnimateDiffModel",
+            "ADE_ApplyAnimateDiffModelSimple",
+            "ADE_UseEvolvedSampling",
+        )
+    )
     if USE_EXTERNAL_WORKFLOW_FILES:
         for fname in (f"{preset['id']}_video_api.json", "animatediff_video_api.json"):
             p = WORKFLOWS_DIR / fname
@@ -2273,24 +2545,45 @@ def submit_video_scene(form_data):
                     continue
 
     if prompt is None:
-        prompt = build_video_prompt(
-            checkpoint=checkpoint,
-            motion_model=motion_model,
-            beta_schedule=beta_schedule,
-            positive=positive,
-            negative=negative,
-            width=width,
-            height=height,
-            frames=frames,
-            fps=fps,
-            steps=steps,
-            cfg=cfg,
-            denoise=denoise,
-            crf=crf,
-            pix_fmt=pix_fmt,
-            seed=seed,
-            output_prefix=output_prefix,
-        )
+        if has_evolved:
+            prompt = build_video_prompt_evolved(
+                checkpoint=checkpoint,
+                motion_model=motion_model,
+                beta_schedule=beta_schedule,
+                positive=positive,
+                negative=negative,
+                width=width,
+                height=height,
+                frames=frames,
+                fps=fps,
+                steps=steps,
+                cfg=cfg,
+                denoise=denoise,
+                crf=crf,
+                pix_fmt=pix_fmt,
+                seed=seed,
+                output_prefix=output_prefix,
+            )
+            workflow_variant = "evolved"
+        else:
+            prompt = build_video_prompt(
+                checkpoint=checkpoint,
+                motion_model=motion_model,
+                beta_schedule=beta_schedule,
+                positive=positive,
+                negative=negative,
+                width=width,
+                height=height,
+                frames=frames,
+                fps=fps,
+                steps=steps,
+                cfg=cfg,
+                denoise=denoise,
+                crf=crf,
+                pix_fmt=pix_fmt,
+                seed=seed,
+                output_prefix=output_prefix,
+            )
 
     try:
         response = comfy_api_post("/prompt", {"prompt": prompt})
@@ -2331,10 +2624,11 @@ def submit_video_scene(form_data):
         "message": "Vídeo encolado en ComfyUI.",
         "prompt_id": prompt_id,
         "output_prefix": output_prefix,
-        "workflow_mode": "external" if workflow_file else "built-in",
+        "workflow_mode": "external" if workflow_file else workflow_variant,
         "workflow_file": workflow_file,
         "used_checkpoint": checkpoint,
         "used_motion_model": motion_model,
+        "used_denoise": denoise,
         "used_positive_prompt": positive,
     }
 
@@ -2394,6 +2688,40 @@ def resolve_wan_model_name(obj_info: dict, preset: dict) -> str:
     return options[0]
 
 
+def resolve_wan_i2v_model_name(obj_info: dict, preferred: str = "") -> str:
+    options = get_node_input_options(obj_info, "WanVideoModelLoader", "model")
+    if not options:
+        return preferred
+
+    if preferred:
+        for opt in options:
+            if opt == preferred and "i2v" in opt.lower():
+                return opt
+
+    i2v_options = [opt for opt in options if "i2v" in opt.lower()]
+    if i2v_options:
+        preferred_low = preferred.lower()
+        # Respect preset scale whenever possible: 14B preset -> I2V 14B, 1.3B preset -> I2V 1.3B.
+        if "14b" in preferred_low:
+            for opt in i2v_options:
+                if "14b" in opt.lower():
+                    return opt
+        if "1_3b" in preferred_low or "1.3b" in preferred_low:
+            for opt in i2v_options:
+                low = opt.lower()
+                if "1_3b" in low or "1.3b" in low:
+                    return opt
+
+        # Prefer non-Lumen/Fun variants when available for a predictable baseline.
+        for opt in i2v_options:
+            low = opt.lower()
+            if "lumen" not in low and "fun/" not in low:
+                return opt
+        return i2v_options[0]
+
+    return ""
+
+
 def default_wan_form():
     profile = WAN_VIDEO_PROFILES[0]
     return {
@@ -2411,6 +2739,188 @@ def default_wan_form():
         "crf": profile["crf"],
         "pix_fmt": profile["pix_fmt"],
         "seed": random.randint(0, 2**31),
+    }
+
+
+def default_wan_i2v_form():
+    f = default_wan_form()
+    imgs = list_comfy_input_images()
+    f["image_name"] = imgs[0] if imgs else ""
+    return f
+
+
+def list_comfy_input_images():
+    input_dir = COMFY_DIR / "input"
+    if not input_dir.exists() or not input_dir.is_dir():
+        return []
+
+    exts = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+    files = []
+    for p in sorted(input_dir.rglob("*")):
+        if not p.is_file():
+            continue
+        if p.suffix.lower() not in exts:
+            continue
+        rel = p.relative_to(input_dir).as_posix()
+        if rel.startswith("."):
+            continue
+        files.append(rel)
+    return files
+
+
+def _patch_workflow_image_input(prompt: dict, image_name: str) -> bool:
+    patched = False
+    for node in prompt.values():
+        if not isinstance(node, dict):
+            continue
+        ct = node.get("class_type", "")
+        inputs = node.get("inputs", {})
+        if not isinstance(inputs, dict):
+            continue
+
+        if ct in ("LoadImage", "LoadImageMask", "VHS_LoadImagePath"):
+            for k in ("image", "filename", "path"):
+                if k in inputs:
+                    inputs[k] = image_name
+                    patched = True
+
+    return patched
+
+
+def submit_wan_i2v_scene(form_data):
+    if not port_open(COMFY_PORT):
+        comfy_start()
+        for _ in range(20):
+            if port_open(COMFY_PORT):
+                break
+            time.sleep(0.5)
+    if not port_open(COMFY_PORT):
+        return {"ok": False, "message": "ComfyUI no está disponible."}
+
+    image_name = (form_data.get("image_name", "") or "").strip()
+    if not image_name:
+        return {
+            "ok": False,
+            "message": "Indica image_name (archivo en ComfyUI/input), por ejemplo: akika_base.png",
+        }
+
+    preset = get_wan_preset(form_data.get("model_preset", "wan_1b"))
+    profile = get_wan_profile(form_data.get("video_profile", "portrait_fast"))
+    width = clamp_step(int(form_data.get("width", profile["width"])), 256, 1280, 8)
+    height = clamp_step(int(form_data.get("height", profile["height"])), 256, 1280, 8)
+    frames = clamp_step(int(form_data.get("frames", profile["frames"])), 8, 121, 1)
+    fps = clamp_step(int(form_data.get("fps", profile["fps"])), 4, 30, 1)
+    steps = clamp_step(int(form_data.get("steps", profile["steps"])), 10, 50, 1)
+    cfg = max(1.0, min(15.0, float(form_data.get("cfg", profile["cfg"]))))
+    shift = max(1.0, min(20.0, float(form_data.get("shift", profile["shift"]))))
+    crf = clamp_step(int(form_data.get("crf", profile["crf"])), 14, 28, 1)
+    pix_fmt = form_data.get("pix_fmt", "yuv420p")
+    seed_raw = int(form_data.get("seed", -1))
+    seed = random.randint(0, 2**31) if seed_raw < 0 else seed_raw
+    positive = (form_data.get("positive_prompt", "") or "").strip()
+    negative = (form_data.get("negative_prompt", "") or "").strip()
+
+    if not positive:
+        return {"ok": False, "message": "El prompt positivo no puede estar vacío."}
+
+    obj_info = get_comfy_object_info()
+    wan_model = resolve_wan_i2v_model_name(obj_info, preset.get("model", ""))
+    if not wan_model:
+        available = get_node_input_options(obj_info, "WanVideoModelLoader", "model")
+        return {
+            "ok": False,
+            "message": (
+                "No hay modelos I2V instalados en WanVideoModelLoader. "
+                "Ahora mismo solo se detectan modelos T2V. "
+                "Instala un checkpoint Wan I2V y reinicia ComfyUI. "
+                f"Modelos detectados: {', '.join(available[:6]) if available else '(ninguno)'}"
+            ),
+        }
+    text_encoder = _resolve_comfy_option(
+        obj_info,
+        "LoadWanVideoT5TextEncoder",
+        "model_name",
+        preset["text_encoder"],
+    )
+    vae = _resolve_comfy_option(
+        obj_info,
+        "WanVideoVAELoader",
+        "model_name",
+        preset["vae"],
+    )
+
+    workflow_file = None
+    for fname in ("wan_i2v_api.json", "wan_i2v.json"):
+        p = WORKFLOWS_DIR / fname
+        if p.exists():
+            workflow_file = p
+            break
+
+    if workflow_file is None:
+        return {
+            "ok": False,
+            "message": (
+                "No existe workflow API I2V. Exporta uno desde ComfyUI como "
+                "wan_i2v_api.json en ComfyUI/workflows/."
+            ),
+        }
+
+    try:
+        api_wf = json.loads(workflow_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"ok": False, "message": f"Error leyendo {workflow_file.name}: {exc}"}
+
+    output_prefix = f"wan_i2v/{time.strftime('%Y%m%d_%H%M%S')}_{slugify_text(positive)[:42]}"
+
+    prompt = patch_api_workflow(
+        api_wf,
+        positive,
+        negative,
+        checkpoint="",
+        width=width,
+        height=height,
+        frames=frames,
+        fps=fps,
+        steps=steps,
+        cfg=cfg,
+        denoise=1.0,
+        crf=crf,
+        pix_fmt=pix_fmt,
+        seed=seed,
+        output_prefix=output_prefix,
+        wan_model=wan_model,
+        shift=shift,
+        text_encoder=text_encoder,
+        vae=vae,
+    )
+
+    if not _patch_workflow_image_input(prompt, image_name):
+        return {
+            "ok": False,
+            "message": (
+                f"El workflow {workflow_file.name} no tiene nodo de imagen compatible "
+                "(LoadImage/LoadImageMask/VHS_LoadImagePath)."
+            ),
+        }
+
+    try:
+        response = comfy_api_post("/prompt", {"prompt": prompt})
+    except Exception as exc:
+        return {"ok": False, "message": f"Error enviando a ComfyUI: {exc}"}
+
+    prompt_id = response.get("prompt_id")
+    if not prompt_id:
+        return {"ok": False, "message": f"ComfyUI no aceptó el prompt: {response}"}
+
+    return {
+        "ok": True,
+        "message": "Escena Wan I2V encolada en ComfyUI.",
+        "prompt_id": prompt_id,
+        "output_prefix": output_prefix,
+        "workflow_file": workflow_file.name,
+        "used_image": image_name,
+        "used_model": wan_model,
+        "used_positive_prompt": positive,
     }
 
 
@@ -2940,6 +3450,29 @@ def wan_video():
 @app.route("/tools/wan-video/export", methods=["POST"])
 def wan_video_export():
     return jsonify(export_wan_workflow(request.form.to_dict()))
+
+
+@app.route("/tools/wan-i2v", methods=["GET", "POST"])
+def wan_i2v_tool():
+    if request.method == "POST":
+        return jsonify(submit_wan_i2v_scene(request.form.to_dict()))
+
+    form = default_wan_i2v_form()
+    input_images = list_comfy_input_images()
+    return render_template_string(
+        WAN_I2V_TOOL_HTML,
+        form=form,
+        input_images=input_images,
+        model_presets=WAN_MODEL_PRESETS,
+        video_profiles=WAN_VIDEO_PROFILES,
+        video_profiles_json=json.dumps(WAN_VIDEO_PROFILES),
+    )
+
+
+@app.route("/tools/wan-i2v/input-images", methods=["GET"])
+def wan_i2v_input_images():
+    images = list_comfy_input_images()
+    return jsonify({"ok": True, "images": images})
 
 
 @app.route("/tools/character-video-prompt/<preset_id>", methods=["GET"])
