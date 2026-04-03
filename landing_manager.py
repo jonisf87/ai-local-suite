@@ -28,6 +28,7 @@ import socket
 import subprocess
 import time
 import threading
+from typing import Any
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib import request as urlrequest, error as urlerror
@@ -74,6 +75,7 @@ VOICE_OUT_DIR = AI_DIR / "voice_out"
 PIPER_MODEL_PATH = os.environ.get("PIPER_MODEL", str(AI_DIR / "piper" / "es_ES-mls_9972-low.onnx"))
 PIPER_CONFIG_PATH = os.environ.get("PIPER_CONFIG", f"{PIPER_MODEL_PATH}.json")
 XTTS_MODEL_NAME = os.environ.get("XTTS_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2")
+XTTS_PYTHON = os.environ.get("XTTS_PYTHON", str(AI_DIR / "venv_xtts311" / "bin" / "python"))
 
 GAME_TTS_PERSONALITY_PRESETS = [
     {
@@ -748,7 +750,7 @@ audio{width:100%;margin-top:10px}
 <form id="tts-form" onsubmit="return generateGameTTS(event)">
     <div class="section"><div class="section-title">Motor y personaje</div>
         <div class="row">
-            <div><label>Motor TTS</label><select name="engine" id="engine">
+            <div><label>Motor TTS</label><select name="engine" id="engine" onchange="applyEngineMode()">
                 <option value="piper">Piper (rápido, local)</option>
                 <option value="xtts">XTTS v2 (personajes expresivos)</option>
             </select></div>
@@ -759,6 +761,12 @@ audio{width:100%;margin-top:10px}
                 <option value="es">Español</option>
                 <option value="en">English</option>
             </select></div>
+        </div>
+        <div class="row" id="piper-model-row">
+            <div><label>Modelo Piper</label><select name="piper_model" id="piper_model">
+                {% for m in piper_models %}<option value="{{ m.id }}" {% if m.id==form.piper_model %}selected{% endif %}>{{ m.name }} ({{ m.id }})</option>{% endfor %}
+            </select></div>
+            <div style="flex:2"><div class="hint" id="engine-hint"></div></div>
         </div>
         <div id="speaker-hint" class="hint"></div>
     </div>
@@ -799,6 +807,21 @@ audio{width:100%;margin-top:10px}
 
 <script>
 const personalities={{personalities_json|safe}};
+const piperRecommendations={{piper_recommendations_json|safe}};
+function applyEngineMode(){
+    const engine=document.getElementById('engine').value;
+    const pRow=document.getElementById('piper-model-row');
+    const eHint=document.getElementById('engine-hint');
+    const speakerHint=document.getElementById('speaker-hint');
+    if(engine==='piper'){
+        if(pRow) pRow.style.display='flex';
+        if(eHint) eHint.textContent='Piper usa el modelo seleccionado arriba.';
+    }else{
+        if(pRow) pRow.style.display='none';
+        if(eHint) eHint.textContent='XTTS ignora el modelo Piper y usa speaker WAV del personaje.';
+    }
+    if(speakerHint) speakerHint.style.display=(engine==='xtts')?'block':'none';
+}
 function applyPreset(){
     const id=document.getElementById('personality_id').value;
     const p=personalities.find(x=>x.id===id);if(!p)return;
@@ -812,8 +835,23 @@ function applyPreset(){
 function applyCharacterMeta(){
     const sel=document.getElementById('character_id');
     const opt=sel.options[sel.selectedIndex];
+    const characterId=(opt&&opt.value)||'';
     const speaker=(opt&&opt.dataset&&opt.dataset.speaker)||'';
+    const piperSel=document.getElementById('piper_model');
     const hint=document.getElementById('speaker-hint');
+    const eHint=document.getElementById('engine-hint');
+
+    if(piperSel && characterId && piperRecommendations[characterId]){
+        const target=piperRecommendations[characterId];
+        const hasOption=[...piperSel.options].some(o=>o.value===target);
+        if(hasOption){
+            piperSel.value=target;
+            if(eHint && document.getElementById('engine').value==='piper'){
+                eHint.textContent='Modelo recomendado para '+characterId+': '+target;
+            }
+        }
+    }
+
     hint.textContent=speaker?('speaker WAV: '+speaker):'speaker WAV: no detectado (necesario para XTTS)';
 }
 async function generateGameTTS(e){
@@ -846,6 +884,7 @@ async function generateGameTTS(e){
 }
 applyPreset();
 applyCharacterMeta();
+applyEngineMode();
 </script>
 </div></body></html>
 """
@@ -1592,6 +1631,58 @@ def load_game_tts_character_presets():
     return presets
 
 
+def list_piper_models():
+    models = []
+    piper_dir = AI_DIR / "piper"
+    if not piper_dir.exists() or not piper_dir.is_dir():
+        return models
+
+    for p in sorted(piper_dir.glob("*.onnx")):
+        if not p.is_file():
+            continue
+        model_id = p.name
+        models.append(
+            {
+                "id": model_id,
+                "name": p.stem.replace("_", " "),
+                "path": str(p),
+                "config_path": str(Path(f"{p}.json")),
+            }
+        )
+    return models
+
+
+def get_piper_model_by_id(model_id: str):
+    if not model_id:
+        return None
+    for m in list_piper_models():
+        if m.get("id") == model_id:
+            return m
+    return None
+
+
+def get_game_tts_piper_recommendations():
+    # Character -> preferred model ids ordered by priority.
+    preferred = {
+        "akika": ["en_GB-cori-high.onnx", "en_US-ljspeech-high.onnx"],
+        "kaede": ["en_GB-alba-medium.onnx", "en_US-amy-medium.onnx"],
+        "kuro": ["en_GB-jenny_dioco-medium.onnx", "en_GB-cori-high.onnx"],
+        "hinata": ["en_US-amy-medium.onnx", "en_GB-alba-medium.onnx"],
+    }
+
+    available = {m.get("id") for m in list_piper_models()}
+    resolved = {}
+    for character_id, candidates in preferred.items():
+        chosen = ""
+        for c in candidates:
+            if c in available:
+                chosen = c
+                break
+        if chosen:
+            resolved[character_id] = chosen
+    return resolved
+
+
 def get_game_tts_personality(preset_id: str):
     for preset in GAME_TTS_PERSONALITY_PRESETS:
         if preset.get("id") == preset_id:
@@ -1642,13 +1733,72 @@ def _get_xtts_model():
     return _xtts_model_cache
 
 
+def _run_xtts_external(
+    speaker_wav: str, language: str, text: str, out_path: Path, speed: float
+) -> dict[str, Any]:
+    py = Path(XTTS_PYTHON)
+    if not py.exists():
+        return {
+            "ok": False,
+            "message": (
+                "XTTS no disponible en runtime actual y no existe XTTS_PYTHON. "
+                "Configura XTTS_PYTHON o usa Piper."
+            ),
+        }
+
+    script = r'''
+import sys
+from TTS.api import TTS
+
+speaker_wav = sys.argv[1]
+language = sys.argv[2]
+text = sys.argv[3]
+out_path = sys.argv[4]
+speed = float(sys.argv[5])
+model_name = sys.argv[6]
+
+tts = TTS(model_name)
+kwargs = {
+    "text": text,
+    "speaker_wav": speaker_wav,
+    "language": language,
+    "file_path": out_path,
+}
+if "speed" in tts.tts_to_file.__code__.co_varnames:
+    kwargs["speed"] = speed
+tts.tts_to_file(**kwargs)
+'''
+
+    proc = subprocess.run(
+        [
+            str(py),
+            "-c",
+            script,
+            speaker_wav,
+            language,
+            text,
+            str(out_path),
+            f"{speed:.3f}",
+            XTTS_MODEL_NAME,
+        ],
+        text=True,
+        capture_output=True,
+        env={**os.environ, "COQUI_TOS_AGREED": "1"},
+    )
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        return {"ok": False, "message": f"Error XTTS externo: {err or 'fallo desconocido'}"}
+    return {"ok": True}
+
+
 def generate_game_tts(
     engine: str,
     character: dict,
     personality: dict,
     text: str,
     language: str,
-):
+    piper_model_path: str = "",
+) -> dict[str, Any]:
     ensure_dir(VOICE_OUT_DIR)
 
     style_text = _styled_tts_text(text, pauses=personality.get("pauses", "medium"))
@@ -1660,14 +1810,16 @@ def generate_game_tts(
     speed = float(personality.get("speed", 1.0) or 1.0)
 
     if engine == "piper":
-        model_path = Path(PIPER_MODEL_PATH)
+        model_path = Path((piper_model_path or "").strip() or PIPER_MODEL_PATH)
         if not model_path.exists():
             return {
                 "ok": False,
                 "message": f"Modelo Piper no encontrado: {model_path}",
             }
         cmd = ["piper", "--model", str(model_path), "--output_file", str(out_path)]
-        cfg_path = Path(PIPER_CONFIG_PATH)
+        cfg_path = Path(f"{model_path}.json")
+        if not cfg_path.exists() and model_path == Path(PIPER_MODEL_PATH):
+            cfg_path = Path(PIPER_CONFIG_PATH)
         if cfg_path.exists():
             cmd.extend(["--config", str(cfg_path)])
 
@@ -1711,10 +1863,16 @@ def generate_game_tts(
                 kwargs["speed"] = speed
             xtts.tts_to_file(**kwargs)
         except Exception as exc:
-            return {
-                "ok": False,
-                "message": f"Error XTTS: {exc}",
-            }
+            log.warning("XTTS en proceso actual no disponible: %s. Probando XTTS_PYTHON...", exc)
+            ext = _run_xtts_external(
+                speaker_wav=speaker_wav,
+                language=language,
+                text=style_text,
+                out_path=out_path,
+                speed=speed,
+            )
+            if not ext.get("ok"):
+                return ext
     else:
         return {"ok": False, "message": f"Motor no soportado: {engine}"}
 
@@ -1727,6 +1885,7 @@ def generate_game_tts(
         "filename": out_name,
         "audio_url": f"/tools/game-tts/audio/{out_name}",
         "engine": engine,
+        "piper_model": model_path.name if engine == "piper" else "",
     }
 
 
@@ -2584,8 +2743,13 @@ def export_wan_workflow(form_data):
 def default_game_tts_form():
     preset = GAME_TTS_PERSONALITY_PRESETS[0]
     chars = load_game_tts_character_presets()
+    piper_models = list_piper_models()
+    default_piper = Path(PIPER_MODEL_PATH).name
+    if piper_models and not any(m.get("id") == default_piper for m in piper_models):
+        default_piper = piper_models[0]["id"]
     return {
         "engine": "piper",
+        "piper_model": default_piper,
         "character_id": chars[0]["id"] if chars else "hero",
         "language": "es",
         "personality_id": preset["id"],
@@ -2608,6 +2772,7 @@ def submit_game_tts(form_data):
     language = (form_data.get("language", "es") or "es").strip().lower()
     character_id = (form_data.get("character_id", "") or "").strip()
     personality_id = (form_data.get("personality_id", "") or "").strip()
+    piper_model_id = (form_data.get("piper_model", "") or "").strip()
 
     characters = load_game_tts_character_presets()
     character = next((c for c in characters if c.get("id") == character_id), None)
@@ -2625,12 +2790,23 @@ def submit_game_tts(form_data):
             except Exception:
                 pass
 
-    result = generate_game_tts(
+    piper_model_path = ""
+    if engine == "piper":
+        selected_model = get_piper_model_by_id(piper_model_id)
+        if selected_model is None:
+            piper_models = list_piper_models()
+            if not piper_models:
+                return {"ok": False, "message": "No hay modelos Piper disponibles en ~/ai/piper."}
+            selected_model = piper_models[0]
+        piper_model_path = selected_model.get("path", "")
+
+    result: dict[str, Any] = generate_game_tts(
         engine=engine,
         character=character,
         personality=personality,
         text=text,
         language=language,
+        piper_model_path=piper_model_path,
     )
     if not result.get("ok"):
         return result
@@ -2643,6 +2819,8 @@ def submit_game_tts(form_data):
     )
     result["personality"] = personality
     result["character"] = character
+    if engine == "piper":
+        result["piper_model"] = Path(piper_model_path).name if piper_model_path else ""
     return result
 
 
@@ -2780,10 +2958,14 @@ def character_video_prompt(preset_id):
 def game_tts_tool():
     form = default_game_tts_form()
     characters = load_game_tts_character_presets()
+    piper_models = list_piper_models()
+    piper_recommendations = get_game_tts_piper_recommendations()
     return render_template_string(
         GAME_TTS_HTML,
         form=form,
         characters=characters,
+        piper_models=piper_models,
+        piper_recommendations_json=json.dumps(piper_recommendations, ensure_ascii=False),
         personalities=GAME_TTS_PERSONALITY_PRESETS,
         personalities_json=json.dumps(GAME_TTS_PERSONALITY_PRESETS, ensure_ascii=False),
     )
