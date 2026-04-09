@@ -93,14 +93,14 @@ else:
 VOICE_CMD = [str(VENV_PYTHON), str(VOICE_SCRIPT)]
 VOICE_PORT = 7862
 
-ADULT_CHATBOT_DIR = AI_DIR / "adult_chatbot_manga"
-ADULT_CHATBOT_PORT = 8000
-ADULT_CHATBOT_CMD = (
+MANGA_CHATBOT_DIR = AI_DIR / "manga_chatbot"
+MANGA_CHATBOT_PORT = 8000
+MANGA_CHATBOT_CMD = (
     [
         str(VENV_PYTHON),
         "manage.py",
         "runserver",
-        f"0.0.0.0:{ADULT_CHATBOT_PORT}",
+        f"0.0.0.0:{MANGA_CHATBOT_PORT}",
     ]
 )
 
@@ -109,7 +109,7 @@ LANDING_DEBUG = os.environ.get("LANDING_DEBUG", "0") == "1"
 
 WAN_WRAPPER_DIR = COMFY_DIR / "custom_nodes" / "ComfyUI-WanVideoWrapper"
 OLLAMA_MODELFILES_DIR = AI_DIR / "modelfiles"
-CHARACTER_PROFILES_DIR = AI_DIR / "adult_chatbot_manga" / "characters"
+CHARACTER_PROFILES_DIR = MANGA_CHATBOT_DIR / "characters"
 VOICE_OUT_DIR = AI_DIR / "voice_out"
 PIPER_MODEL_PATH = os.environ.get("PIPER_MODEL", str(AI_DIR / "piper" / "es_ES-mls_9972-low.onnx"))
 PIPER_CONFIG_PATH = os.environ.get("PIPER_CONFIG", f"{PIPER_MODEL_PATH}.json")
@@ -178,7 +178,7 @@ SERVICES = [
     {"key": "openwebui", "label": "Open WebUI", "port": OW_PORT},
     {"key": "ollama", "label": "Ollama", "port": OLLAMA_PORT},
     {"key": "voice", "label": "Voice UI", "port": VOICE_PORT},
-    {"key": "adultchatbot", "label": "adult_chatbot_manga", "port": ADULT_CHATBOT_PORT},
+    {"key": "mangachatbot", "label": "manga_chatbot", "port": MANGA_CHATBOT_PORT},
 ]
 
 # --- PRESETS AnimateDiff SDXL -------------------------------------------------
@@ -400,14 +400,14 @@ setInterval(pollStatus,5000);
   </div>
     <div class="card">
         <div class="head">
-            <div><div class="name">📚 adult_chatbot_manga</div><div class="url">http://localhost:{{adult_chatbot_port}}</div></div>
-            <span class="status {{'up' if adultchatbot_up else 'down'}}" data-svc="adultchatbot">{{'UP' if adultchatbot_up else 'DOWN'}}</span>
+            <div><div class="name">📚 manga_chatbot</div><div class="url">http://localhost:{{manga_chatbot_port}}</div></div>
+            <span class="status {{'up' if mangachatbot_up else 'down'}}" data-svc="mangachatbot">{{'UP' if mangachatbot_up else 'DOWN'}}</span>
         </div>
         <div class="btns">
-            <a class="btn" href="http://localhost:{{adult_chatbot_port}}" target="_blank">Abrir App</a>
-            <a class="btn" href="javascript:doAction('adultchatbot','start')">Start</a>
-            <a class="btn" href="javascript:doAction('adultchatbot','stop')">Stop</a>
-            <a class="btn" href="javascript:doAction('adultchatbot','restart')">Restart</a>
+            <a class="btn" href="http://localhost:{{manga_chatbot_port}}" target="_blank">Abrir App</a>
+            <a class="btn" href="javascript:doAction('mangachatbot','start')">Start</a>
+            <a class="btn" href="javascript:doAction('mangachatbot','stop')">Stop</a>
+            <a class="btn" href="javascript:doAction('mangachatbot','restart')">Restart</a>
         </div>
     </div>
 </div>
@@ -1308,7 +1308,7 @@ RUN_DIR = AI_DIR / "run"
 ensure_dir(RUN_DIR)
 COMFY_PID = RUN_DIR / "comfyui.pid"
 VOICE_PID = RUN_DIR / "voice.pid"
-ADULT_CHATBOT_PID = RUN_DIR / "adult_chatbot_manga.pid"
+MANGA_CHATBOT_PID = RUN_DIR / "manga_chatbot.pid"
 
 
 def comfy_start():
@@ -1383,18 +1383,18 @@ def voice_stop():
     kill_from_pidfile(VOICE_PID)
 
 
-def adult_chatbot_start():
-    if port_open(ADULT_CHATBOT_PORT):
+def manga_chatbot_start():
+    if port_open(MANGA_CHATBOT_PORT):
         return "already"
-    if not ADULT_CHATBOT_DIR.exists():
-        log.warning("adult_chatbot_manga no encontrado: %s", ADULT_CHATBOT_DIR)
-        return f"dir_not_found:{ADULT_CHATBOT_DIR}"
-    log.info("Arrancando adult_chatbot_manga...")
-    return run_bg(ADULT_CHATBOT_CMD, ADULT_CHATBOT_PID, cwd=ADULT_CHATBOT_DIR)
+    if not MANGA_CHATBOT_DIR.exists():
+        log.warning("manga_chatbot no encontrado: %s", MANGA_CHATBOT_DIR)
+        return f"dir_not_found:{MANGA_CHATBOT_DIR}"
+    log.info("Arrancando manga_chatbot...")
+    return run_bg(MANGA_CHATBOT_CMD, MANGA_CHATBOT_PID, cwd=MANGA_CHATBOT_DIR)
 
 
-def adult_chatbot_stop():
-    kill_from_pidfile(ADULT_CHATBOT_PID)
+def manga_chatbot_stop():
+    kill_from_pidfile(MANGA_CHATBOT_PID)
 
 
 def ollama_start():
@@ -3400,12 +3400,12 @@ def index():
         ow_port=OW_PORT,
         ollama_port=OLLAMA_PORT,
         voice_port=VOICE_PORT,
-        adult_chatbot_port=ADULT_CHATBOT_PORT,
+        manga_chatbot_port=MANGA_CHATBOT_PORT,
         comfy_up=status.get("comfy", False),
         ow_up=status.get("openwebui", False),
         ollama_up=status.get("ollama", False),
         voice_up=status.get("voice", False),
-        adultchatbot_up=status.get("adultchatbot", False),
+        mangachatbot_up=status.get("mangachatbot", False),
         ow_container=OW_CONTAINER,
         ow_image=OW_IMAGE,
         voice_script=VOICE_SCRIPT.name,
@@ -3642,16 +3642,16 @@ def svc_openwebui(action):
     return ("", 204)
 
 
-@app.post("/svc/adultchatbot/<action>")
-def svc_adultchatbot(action):
+@app.post("/svc/mangachatbot/<action>")
+def svc_mangachatbot(action):
     if action == "start":
-        adult_chatbot_start()
+        manga_chatbot_start()
     elif action == "stop":
-        adult_chatbot_stop()
+        manga_chatbot_stop()
     elif action == "restart":
-        adult_chatbot_stop()
+        manga_chatbot_stop()
         time.sleep(0.3)
-        adult_chatbot_start()
+        manga_chatbot_start()
     return ("", 204)
 
 
