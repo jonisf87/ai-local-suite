@@ -22,6 +22,7 @@ import inspect
 import importlib
 import logging
 import os
+import sys
 import random
 import re
 import socket
@@ -43,10 +44,34 @@ log = logging.getLogger(__name__)
 
 # --- RUTAS Y PUERTOS ----------------------------------------------------------
 HOME = Path.home()
-AI_DIR = HOME / "ai"
+REPO_DIR = Path(__file__).resolve().parent
+AI_DIR = Path(os.environ.get("AI_SUITE_HOME", str(HOME / "ai"))).expanduser().resolve()
+
+
+def _first_existing_path(paths: list[Path | None]) -> Path | None:
+    for p in paths:
+        if p and p.exists():
+            return p
+    return None
+
+
+_env_python = os.environ.get("AI_SUITE_PYTHON", "").strip()
+if _env_python:
+    _env_python_path = Path(_env_python).expanduser()
+else:
+    _env_python_path = Path()
+VENV_PYTHON = _first_existing_path(
+    [
+        _env_python_path if _env_python else None,
+        AI_DIR / "venv" / "bin" / "python",
+        REPO_DIR / ".venv" / "bin" / "python",
+    ]
+)
+if VENV_PYTHON is None:
+    VENV_PYTHON = Path(sys.executable)
 
 COMFY_DIR = AI_DIR / "ComfyUI"
-COMFY_CMD = f"cd {COMFY_DIR} && {AI_DIR}/venv/bin/python main.py"
+COMFY_CMD = [str(VENV_PYTHON), "main.py"]
 COMFY_PORT = 8188
 WORKFLOWS_DIR = COMFY_DIR / "workflows"
 USE_EXTERNAL_WORKFLOW_FILES = (
@@ -58,15 +83,29 @@ OW_IMAGE = "ghcr.io/open-webui/open-webui:latest"
 OW_PORT = 8080
 OLLAMA_PORT = 11434
 
-VOICE_SCRIPT = AI_DIR / "voice_assistant_ui.py"
-VOICE_CMD = f"{AI_DIR}/venv/bin/python {VOICE_SCRIPT}"
+_voice_script_candidate = _first_existing_path(
+    [AI_DIR / "voice_assistant_ui.py", REPO_DIR / "voice_assistant_ui.py"]
+)
+if _voice_script_candidate is None:
+    VOICE_SCRIPT: Path = AI_DIR / "voice_assistant_ui.py"
+else:
+    VOICE_SCRIPT: Path = _voice_script_candidate
+VOICE_CMD = [str(VENV_PYTHON), str(VOICE_SCRIPT)]
 VOICE_PORT = 7862
 
 ADULT_CHATBOT_DIR = AI_DIR / "adult_chatbot_manga"
 ADULT_CHATBOT_PORT = 8000
 ADULT_CHATBOT_CMD = (
-    f"cd {ADULT_CHATBOT_DIR} && {AI_DIR}/venv/bin/python manage.py runserver 0.0.0.0:{ADULT_CHATBOT_PORT}"
+    [
+        str(VENV_PYTHON),
+        "manage.py",
+        "runserver",
+        f"0.0.0.0:{ADULT_CHATBOT_PORT}",
+    ]
 )
+
+LANDING_HOST = os.environ.get("LANDING_HOST", "127.0.0.1")
+LANDING_DEBUG = os.environ.get("LANDING_DEBUG", "0") == "1"
 
 WAN_WRAPPER_DIR = COMFY_DIR / "custom_nodes" / "ComfyUI-WanVideoWrapper"
 OLLAMA_MODELFILES_DIR = AI_DIR / "modelfiles"
@@ -1199,9 +1238,12 @@ def check_all_status() -> dict:
         return dict(ex.map(_check, SERVICES))
 
 
-def run_bg(cmd: str, pidfile: Path) -> int:
+def run_bg(cmd: list[str], pidfile: Path, cwd: Path | None = None) -> int:
     proc = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
     )
     pidfile.write_text(str(proc.pid))
     return proc.pid
@@ -1273,7 +1315,7 @@ def comfy_start():
     if port_open(COMFY_PORT):
         return "already"
     log.info("Arrancando ComfyUI...")
-    return run_bg(COMFY_CMD, COMFY_PID)
+    return run_bg(COMFY_CMD, COMFY_PID, cwd=COMFY_DIR)
 
 
 def comfy_stop():
@@ -1348,7 +1390,7 @@ def adult_chatbot_start():
         log.warning("adult_chatbot_manga no encontrado: %s", ADULT_CHATBOT_DIR)
         return f"dir_not_found:{ADULT_CHATBOT_DIR}"
     log.info("Arrancando adult_chatbot_manga...")
-    return run_bg(ADULT_CHATBOT_CMD, ADULT_CHATBOT_PID)
+    return run_bg(ADULT_CHATBOT_CMD, ADULT_CHATBOT_PID, cwd=ADULT_CHATBOT_DIR)
 
 
 def adult_chatbot_stop():
@@ -3614,6 +3656,9 @@ def svc_adultchatbot(action):
 
 
 if __name__ == "__main__":
+    log.info("Landing host=%s debug=%s", LANDING_HOST, LANDING_DEBUG)
+    log.info("Python runtime para servicios: %s", VENV_PYTHON)
+    log.info("Voice script seleccionado: %s", VOICE_SCRIPT)
     t = threading.Thread(target=autostart, daemon=True)
     t.start()
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+    app.run(host=LANDING_HOST, port=5000, debug=LANDING_DEBUG, use_reloader=False)

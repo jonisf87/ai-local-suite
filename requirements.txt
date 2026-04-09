@@ -6,3 +6,5 @@ uvicorn>=0.30
 starlette>=0.38
 soundfile>=0.12
 pydub>=0.25
+
+Flask>=3.0

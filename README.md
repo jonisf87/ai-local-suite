@@ -12,7 +12,7 @@
 
   ## Estructura recomendada de carpetas
 
-  ```
+  ```text
   /home/jonathan/ai
   ├── ComfyUI/                   (generación de imágenes y vídeo)
   │   └── workflows/             (workflows por personaje: akika_video.json, etc.)
@@ -180,7 +180,7 @@
 
   Abrir en el navegador:
 
-  ```
+  ```text
   http://localhost:8080
   ```
 
@@ -199,7 +199,7 @@
   1. **Prompt Global**: Ve a **Settings** → **General** → busca **"Indicador del sistema"** (System Prompt)
      - Este prompt se aplicará a todas tus conversaciones
      - Ejemplo para asistente técnico:
-       ```
+      ```text
        Eres un experto en Linux, Docker, Python y AI local.
        Trabajas principalmente con WSL2 Ubuntu.
        Das respuestas técnicas precisas con comandos listos para ejecutar.
@@ -213,7 +213,7 @@
   **Ejemplos de prompts útiles**:
 
   - **Para asistente de voz** (respuestas cortas):
-    ```
+    ```text
     Eres un asistente de voz breve y directo.
     Respondes en máximo 2-3 oraciones cortas.
     Evitas listas largas y explicaciones extensas.
@@ -221,7 +221,7 @@
     ```
 
   - **Para programación**:
-    ```
+    ```text
     Eres un desarrollador senior especializado en Python y JavaScript.
     Proporcionas código limpio, comentado y siguiendo mejores prácticas.
     Explicas el razonamiento detrás de tus soluciones.
@@ -370,12 +370,14 @@
   Ejecutar:
 
   ```bash
-  source ~/ai/venv/bin/activate
-  python /home/jonathan/ai/ai-local-suite/landing_manager.py
+  /home/jonathan/ai/venv/bin/pip install -r /home/jonathan/ai/ai-local-suite/requirements.txt
+  /home/jonathan/ai/venv/bin/python /home/jonathan/ai/ai-local-suite/landing_manager.py
   # Abrir: http://localhost:5000
   ```
 
-  > **Nota**: El landing manager usa `debug=True`, por lo que Flask recarga automáticamente si modificas el archivo. Con `Ctrl+Shift+R` en el navegador evitas caché del lado cliente.
+  > **Nota**: por defecto arranca en `127.0.0.1` y `debug=False`.
+  > Si necesitas exponer en red o activar debug:
+  > `LANDING_HOST=0.0.0.0 LANDING_DEBUG=1 /home/jonathan/ai/venv/bin/python /home/jonathan/ai/ai-local-suite/landing_manager.py`
 
   Comprobar puertos en caso de conflicto:
 
@@ -417,9 +419,8 @@
   ### Opción A: Usando Landing Manager (Recomendado)
 
   ```bash
-  cd ~/ai
-  source venv/bin/activate
-  python landing_manager.py
+  cd /home/jonathan/ai/ai-local-suite
+  /home/jonathan/ai/venv/bin/python landing_manager.py
   # Abre http://localhost:5000 y todos los servicios arrancarán automáticamente
   ```
 
@@ -428,6 +429,52 @@
   2. Open WebUI (Docker)
   3. ComfyUI
   4. Voice Assistant UI
+
+  ### Verificación rápida de arranque
+
+  ```bash
+  curl -sS http://127.0.0.1:5000/api/status
+  # Ejemplo: {"adultchatbot":false,"comfy":true,"ollama":true,"openwebui":true,"voice":true}
+  ```
+
+  ## 9) Ejecutable del Landing Manager (PyInstaller)
+
+  Sí, se puede generar ejecutable, pero **siempre por plataforma**.
+
+  ### Build Linux (desde WSL/Ubuntu)
+
+  ```bash
+  cd /home/jonathan/ai/ai-local-suite
+  chmod +x build_landing_executable.sh
+  ./build_landing_executable.sh
+  ```
+
+  Binario Linux:
+
+  ```bash
+  dist/landing-manager/landing-manager
+  ```
+
+  ### Build Windows `.exe` (desde Windows nativo)
+
+  Ejecuta PowerShell en el repo (no dentro de WSL):
+
+  ```powershell
+  cd \\wsl.localhost\Ubuntu\home\jonathan\ai\ai-local-suite
+  powershell -ExecutionPolicy Bypass -File .\build_landing_executable.ps1
+  ```
+
+  EXE generado:
+
+  ```text
+  dist\landing-manager\landing-manager.exe
+  ```
+
+  Limitaciones importantes:
+
+  - El build en Linux no sirve como `.exe` en Windows.
+  - El build en Windows no sirve como binario Linux.
+  - El ejecutable empaqueta el panel Flask, pero sigue necesitando servicios externos (`~/ai/ComfyUI`, Docker/Open WebUI, Ollama, etc.).
 
   ### Opción B: Manual (paso a paso)
 
